@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+midi-control = "0.2.2"
 midir = "0.9.1"
 thiserror = "1.0.40"
 web-audio-api = "0.28.0"

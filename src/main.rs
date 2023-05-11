@@ -1,23 +1,24 @@
-use midir::{self, ConnectError, MidiInputConnection, MidiInputPort};
-use midir::{Ignore, MidiInput};
+use midi_control::{Channel, MidiMessage};
 use std::fs::File;
 use std::io;
-use std::io::{stdin, stdout, Write};
-use thiserror::Error as ThisError;
 use web_audio_api::context::{AudioContext, BaseAudioContext};
 use web_audio_api::node::{AudioNode, AudioScheduledSourceNode};
 
-const MIDI_CC_VOLUME: u8 = 21;
+mod midi;
 
-#[derive(Debug, ThisError)]
-enum PlaygroundError {
+use crate::midi::Midi;
+
+#[derive(Debug, thiserror::Error)]
+enum Error {
     #[error("failed to open file")]
     OpenFile(#[from] io::Error),
     #[error("failed to decode audio")]
     DecodeAudio(#[from] Box<dyn std::error::Error + Send + Sync>),
+    #[error("failed to connect midi")]
+    Midi(#[from] midi::Error),
 }
 
-fn main() -> Result<(), PlaygroundError> {
+fn main() -> Result<(), Error> {
     // set up the audio context with optimized settings for your hardware
     let context = AudioContext::default();
 
@@ -60,67 +61,24 @@ fn main() -> Result<(), PlaygroundError> {
     // play the buffer
     src.start();
 
-    let midi_callback = |message: &[u8]| {
-        let cc_id = message[1];
-        let cc_value = message[2] as f32;
+    let (_midi, midi_rx) = Midi::start()?;
 
-        match cc_id {
-            MIDI_CC_VOLUME => {
-                let level: f32 = 1.0 / 127.0 * cc_value;
-                println!("midi change my volume to {}", level);
-                // &volume.gain().set_value(level);
+    for midi_msg in midi_rx {
+        match midi_msg {
+            MidiMessage::ControlChange(ch, ev) => {
+                println!("ControlChange: {:?}, ev: {:?}", ch, ev);
+
+                match ch {
+                    Channel::Ch1 => {
+                        let level: f32 = 1.0 / 127.0 * ev.control as f32;
+                        println!("midi change my volume to {}", level);
+                    }
+                    _ => {}
+                };
             }
-            _ => println!("ignored cc with id: {}, value: {}", cc_id, cc_value),
-        };
-    };
-
-    match connect_midi(midi_callback) {
-        Ok(_) => loop {},
-        Err(err) => println!("Error: {}", err),
-    };
-
-    Ok(())
-}
-
-fn connect_midi(
-    midi_callback: fn(&[u8]) -> (),
-) -> Result<MidiInputConnection<()>, ConnectError<MidiInput>> {
-    let mut midi_in = MidiInput::new("midi input").unwrap();
-    midi_in.ignore(Ignore::None);
-
-    // Get an input port (read from console if multiple are available)
-    let in_ports = midi_in.ports();
-    let in_port: &MidiInputPort = match in_ports.len() {
-        0 => return Err("no input port found").unwrap(),
-        1 => {
-            println!(
-                "Choosing the only available input port: {}",
-                midi_in.port_name(&in_ports[0]).unwrap()
-            );
-            &in_ports[0]
+            _ => {}
         }
-        _ => {
-            println!("\nAvailable input ports:");
-            for (i, p) in in_ports.iter().enumerate() {
-                println!("{}: {}", i, midi_in.port_name(p).unwrap());
-            }
-            print!("Please select input port: ");
-            stdout().flush().unwrap();
-            let mut input = String::new();
-            stdin().read_line(&mut input).unwrap();
-            in_ports
-                .get(input.trim().parse::<usize>().unwrap())
-                .ok_or("invalid input port selected")
-                .unwrap()
-        }
-    };
+    }
 
-    midi_in.connect(
-        in_port,
-        "midir-read-input",
-        move |_, message, _| {
-            midi_callback(message);
-        },
-        (),
-    )
+    loop {}
 }
