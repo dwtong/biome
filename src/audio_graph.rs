@@ -3,6 +3,7 @@ use web_audio_api::context::{AudioContext, BaseAudioContext};
 use web_audio_api::node::{AudioNode, AudioScheduledSourceNode, BiquadFilterNode, GainNode};
 
 const SAMPLE_FILE: &str = "samples/rain.wav";
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("failed to open file")]
@@ -12,6 +13,7 @@ pub enum Error {
 }
 
 pub struct AudioGraph {
+    filter: BiquadFilterNode,
     volume: GainNode,
     _context: AudioContext,
 }
@@ -26,19 +28,10 @@ impl AudioGraph {
         let volume = context.create_gain();
         volume.gain().set_value(0.5);
 
-        // create low pass filter
-        let lp_filter = context.create_biquad_filter();
-        lp_filter.set_type(web_audio_api::node::BiquadFilterType::Lowpass);
-        lp_filter
-            .frequency()
-            .set_value_at_time(1900.0, context.current_time());
-
-        // create high pass filter
-        let hp_filter = context.create_biquad_filter();
-        hp_filter.set_type(web_audio_api::node::BiquadFilterType::Highpass);
-        hp_filter
-            .frequency()
-            .set_value_at_time(1800.0, context.current_time());
+        let filter = context.create_biquad_filter();
+        filter.set_type(web_audio_api::node::BiquadFilterType::Bandpass);
+        filter.frequency().set_value(1800.0);
+        filter.q().set_value(0.667);
 
         let src = context.create_buffer_source();
         src.set_buffer(buffer);
@@ -46,9 +39,8 @@ impl AudioGraph {
         // TODO: get playback rate working
         // src.playback_rate().set_value(0.1);
 
-        src.connect(&lp_filter);
-        lp_filter.connect(&hp_filter);
-        hp_filter.connect(&volume);
+        src.connect(&filter);
+        filter.connect(&volume);
         volume.connect(&context.destination());
 
         // play the buffer
@@ -56,8 +48,17 @@ impl AudioGraph {
 
         Ok(Self {
             volume,
+            filter,
             _context: context,
         })
+    }
+
+    pub fn set_filter_q(&mut self, value: f32) {
+        self.filter.q().set_value(value);
+    }
+
+    pub fn set_filter_frequency(&mut self, value: f32) {
+        self.filter.frequency().set_value(value);
     }
 
     pub fn set_volume(&mut self, value: f32) {
