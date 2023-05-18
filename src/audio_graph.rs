@@ -42,26 +42,26 @@ impl AudioGraphChannel {
         }
     }
 
-    pub fn set_filter_q(&mut self, value: f32) {
+    pub fn set_filter_q(&self, value: f32) {
         self.filter.q().set_value(value);
     }
 
-    pub fn set_filter_frequency(&mut self, value: f32) {
+    pub fn set_filter_frequency(&self, value: f32) {
         self.filter.frequency().set_value(value);
     }
 
-    pub fn set_volume(&mut self, value: f32) {
+    pub fn set_volume(&self, value: f32) {
         self.volume.gain().set_value(value);
     }
 
-    pub fn load(&mut self, context: &AudioContext, path: &str) -> Result<(), Error> {
+    pub fn load(&self, context: &AudioContext, path: &str) -> Result<(), Error> {
         let file = File::open(path)?;
         let buffer = context.decode_audio_data_sync(file)?;
         self.source.set_buffer(buffer);
         Ok(())
     }
 
-    pub fn play(&mut self) {
+    pub fn play(&self) {
         self.source.start();
     }
 }
@@ -91,17 +91,11 @@ impl AudioGraph {
         }
     }
 
-    pub fn get_channel(&mut self, channel_index: usize) -> Option<&mut AudioGraphChannel> {
-        self.channels.get_mut(channel_index)
+    pub fn get_channel(&self, channel_index: usize) -> Option<&AudioGraphChannel> {
+        self.channels.get(channel_index)
     }
 
-    pub fn get_channel_and_context(&mut self, channel_index: usize) -> (Option<&mut AudioGraphChannel>, &AudioContext) {
-        (self.channels.get_mut(channel_index), &self.context)
-    }
-
-    /*
     pub fn context(&self) -> &AudioContext {
         &self.context
     }
-    */
 }

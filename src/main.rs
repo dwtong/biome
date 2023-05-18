@@ -21,10 +21,10 @@ enum Error {
 
 fn main() -> Result<(), Error> {
     let (_midi, midi_rx) = Midi::start()?;
-    let mut audio_graph = AudioGraph::new(4);
+    let audio_graph = AudioGraph::new(4);
     {
-        let (channel_opt, context) = audio_graph.get_channel_and_context(0);
-        let channel = channel_opt.unwrap();
+        let context = audio_graph.context();
+        let channel = audio_graph.get_channel(0).unwrap();
         channel.load(context, SAMPLE_FILE)?;
         channel.play();
     }
