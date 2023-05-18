@@ -1,8 +1,8 @@
 use std::{fs::File, io};
 use web_audio_api::context::{AudioContext, BaseAudioContext};
-use web_audio_api::node::{AudioNode, AudioScheduledSourceNode, BiquadFilterNode, GainNode};
-
-const SAMPLE_FILE: &str = "samples/rain.wav";
+use web_audio_api::node::{
+    AudioBufferSourceNode, AudioNode, AudioScheduledSourceNode, BiquadFilterNode, GainNode,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -12,19 +12,14 @@ pub enum Error {
     DecodeAudio(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
-pub struct AudioGraph {
+pub struct AudioGraphChannel {
     filter: BiquadFilterNode,
     volume: GainNode,
-    _context: AudioContext,
+    source: AudioBufferSourceNode,
 }
 
-impl AudioGraph {
-    pub fn new() -> Result<Self, Error> {
-        let context = AudioContext::default();
-
-        let file = File::open(SAMPLE_FILE)?;
-        let buffer = context.decode_audio_data_sync(file)?;
-
+impl AudioGraphChannel {
+    fn new(context: &AudioContext, destination: &GainNode) -> Self {
         let volume = context.create_gain();
         volume.gain().set_value(0.5);
 
@@ -33,24 +28,18 @@ impl AudioGraph {
         filter.frequency().set_value(1800.0);
         filter.q().set_value(0.667);
 
-        let src = context.create_buffer_source();
-        src.set_buffer(buffer);
-        src.set_loop(true);
-        // TODO: get playback rate working
-        // src.playback_rate().set_value(0.1);
+        let source = context.create_buffer_source();
+        source.set_loop(true);
 
-        src.connect(&filter);
+        source.connect(&filter);
         filter.connect(&volume);
-        volume.connect(&context.destination());
+        volume.connect(destination);
 
-        // play the buffer
-        src.start();
-
-        Ok(Self {
-            volume,
+        Self {
             filter,
-            _context: context,
-        })
+            source,
+            volume,
+        }
     }
 
     pub fn set_filter_q(&mut self, value: f32) {
@@ -64,4 +53,55 @@ impl AudioGraph {
     pub fn set_volume(&mut self, value: f32) {
         self.volume.gain().set_value(value);
     }
+
+    pub fn load(&mut self, context: &AudioContext, path: &str) -> Result<(), Error> {
+        let file = File::open(path)?;
+        let buffer = context.decode_audio_data_sync(file)?;
+        self.source.set_buffer(buffer);
+        Ok(())
+    }
+
+    pub fn play(&mut self) {
+        self.source.start();
+    }
+}
+
+pub struct AudioGraph {
+    channels: Vec<AudioGraphChannel>,
+    _volume: GainNode,
+    context: AudioContext,
+}
+
+impl AudioGraph {
+    pub fn new(num_channels: u8) -> Self {
+        let context = AudioContext::default();
+
+        let volume = context.create_gain();
+        volume.gain().set_value(1.0);
+        volume.connect(&context.destination());
+
+        let channels: Vec<AudioGraphChannel> = (0..num_channels)
+            .map(|_| AudioGraphChannel::new(&context, &volume))
+            .collect();
+
+        Self {
+            context,
+            channels,
+            _volume: volume,
+        }
+    }
+
+    pub fn get_channel(&mut self, channel_index: usize) -> Option<&mut AudioGraphChannel> {
+        self.channels.get_mut(channel_index)
+    }
+
+    pub fn get_channel_and_context(&mut self, channel_index: usize) -> (Option<&mut AudioGraphChannel>, &AudioContext) {
+        (self.channels.get_mut(channel_index), &self.context)
+    }
+
+    /*
+    pub fn context(&self) -> &AudioContext {
+        &self.context
+    }
+    */
 }

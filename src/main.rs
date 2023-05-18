@@ -9,23 +9,32 @@ use crate::midi::Midi;
 const VOLUME_CONTROL: u8 = 21;
 const FILTER_FREQUENCY: u8 = 22;
 const FILTER_Q: u8 = 23;
+const SAMPLE_FILE: &str = "samples/rain.wav";
 
 #[derive(Debug, thiserror::Error)]
 enum Error {
     #[error("failed to connect midi")]
     Midi(#[from] midi::Error),
-    #[error("failed to initialise audio graph")]
+    #[error("failed to control audio graph")]
     AudioGraph(#[from] audio_graph::Error),
 }
 
 fn main() -> Result<(), Error> {
     let (_midi, midi_rx) = Midi::start()?;
-    let mut audio_graph = AudioGraph::new()?;
+    let mut audio_graph = AudioGraph::new(4);
+    {
+        let (channel_opt, context) = audio_graph.get_channel_and_context(0);
+        let channel = channel_opt.unwrap();
+        channel.load(context, SAMPLE_FILE)?;
+        channel.play();
+    }
 
     for midi_msg in midi_rx {
         match midi_msg {
             MidiMessage::ControlChange(ch, ev) => {
                 println!("ControlChange: {:?}, ev: {:?}", ch, ev);
+
+                let channel = audio_graph.get_channel(0).unwrap();
 
                 if ch != Channel::Ch8 {
                     continue;
@@ -34,19 +43,19 @@ fn main() -> Result<(), Error> {
                 match ev.control {
                     VOLUME_CONTROL => {
                         let level = midi_to_percent(ev.value);
-                        audio_graph.set_volume(level);
+                        channel.set_volume(level);
                     }
 
                     FILTER_FREQUENCY => {
                         let freq = midi_to_freq(ev.value);
                         println!("filter freq: {}", freq);
-                        audio_graph.set_filter_frequency(freq);
+                        channel.set_filter_frequency(freq);
                     }
 
                     FILTER_Q => {
                         let q = midi_to_percent(ev.value);
                         println!("filter q: {}", q);
-                        audio_graph.set_filter_q(q);
+                        channel.set_filter_q(q);
                     }
 
                     _ => {}
