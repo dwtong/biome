@@ -8,8 +8,13 @@ use crate::audio_graph::AudioGraph;
 use crate::message_processor::MessageProcessor;
 use crate::midi::Midi;
 
-const CHANNEL_COUNT: usize = 2;
-const SAMPLE_FILES: [&str; CHANNEL_COUNT] = ["samples/bird.wav", "samples/rain.wav"];
+const CHANNEL_COUNT: usize = 4;
+const SAMPLE_FILES: [&str; CHANNEL_COUNT] = [
+    "samples/bird.wav",
+    "samples/rain.wav",
+    "samples/crunch.wav",
+    "samples/taps.wav",
+];
 
 #[derive(Debug, thiserror::Error)]
 enum Error {
