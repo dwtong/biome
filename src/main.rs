@@ -8,10 +8,8 @@ use crate::audio_graph::AudioGraph;
 use crate::message_processor::MessageProcessor;
 use crate::midi::Midi;
 
-const VOLUME_CONTROL: u8 = 21;
-const FILTER_FREQUENCY: u8 = 22;
-const FILTER_Q: u8 = 23;
-const SAMPLE_FILE: &str = "samples/rain.wav";
+const CHANNEL_COUNT: usize = 2;
+const SAMPLE_FILES: [&str; CHANNEL_COUNT] = ["samples/bird.wav", "samples/rain.wav"];
 
 #[derive(Debug, thiserror::Error)]
 enum Error {
@@ -24,11 +22,9 @@ enum Error {
 fn main() -> Result<(), Error> {
     let (_midi, midi_rx) = Midi::start()?;
     let audio_graph = AudioGraph::new(4);
-    {
-        let context = audio_graph.context();
-        let channel = audio_graph.get_channel(0).unwrap();
-        channel.load(context, SAMPLE_FILE)?;
-        channel.play();
+
+    for channel in 0..CHANNEL_COUNT {
+        load_and_play_file_for_channel(&audio_graph, channel)?;
     }
 
     for midi_msg in midi_rx {
@@ -42,4 +38,15 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
+fn load_and_play_file_for_channel(
+    audio_graph: &AudioGraph,
+    channel_index: usize,
+) -> Result<(), Error> {
+    let context = audio_graph.context();
+    let channel = audio_graph.get_channel(channel_index).unwrap();
+    let sample_file = SAMPLE_FILES.get(channel_index).unwrap();
+
+    channel.load(context, sample_file)?;
+    channel.play();
+    Ok(())
 }
