@@ -1,4 +1,7 @@
-use crate::{audio_graph::AudioGraph, CHANNEL_COUNT};
+use crate::{
+    audio_graph::{AudioGraph, AudioGraphChannel},
+    CHANNEL_COUNT,
+};
 use midi_control::{Channel, ControlEvent};
 
 enum ControlType {
@@ -21,30 +24,10 @@ impl MessageProcessor {
             return;
         }
 
-        match parse_control(event.control) {
-            Some((channel, _)) if channel >= CHANNEL_COUNT => (),
-
-            Some((channel, ControlType::Volume)) => {
-                let channel = audio_graph.get_channel(channel).unwrap();
-                let level = midi_to_percent(event.value);
-                channel.set_volume(level);
+        if let Some((channel, control_type)) = parse_control(event.control) {
+            if let Some(channel) = audio_graph.get_channel(channel) {
+                set_control_value(channel, control_type, event.value);
             }
-
-            Some((channel, ControlType::FilterFrequency)) => {
-                let channel = audio_graph.get_channel(channel).unwrap();
-                let freq = midi_to_freq(event.value);
-                println!("filter freq: {}", freq);
-                channel.set_filter_frequency(freq);
-            }
-
-            Some((channel, ControlType::FilterQ)) => {
-                let channel = audio_graph.get_channel(channel).unwrap();
-                let q = midi_to_percent(event.value);
-                println!("filter q: {}", q);
-                channel.set_filter_q(q);
-            }
-
-            None => (),
         };
     }
 }
@@ -59,6 +42,25 @@ fn parse_control(control: u8) -> Option<(usize, ControlType)> {
         1 => Some((channel, ControlType::FilterFrequency)),
         2 => Some((channel, ControlType::FilterQ)),
         _ => None,
+    }
+}
+
+fn set_control_value(channel: &AudioGraphChannel, control_type: ControlType, midi_value: u8) {
+    match control_type {
+        ControlType::Volume => {
+            let level = midi_to_percent(midi_value);
+            channel.set_volume(level);
+        }
+
+        ControlType::FilterFrequency => {
+            let freq = midi_to_freq(midi_value);
+            channel.set_filter_frequency(freq);
+        }
+
+        ControlType::FilterQ => {
+            let q = midi_to_percent(midi_value);
+            channel.set_filter_q(q);
+        }
     }
 }
 
