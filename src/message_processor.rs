@@ -1,42 +1,64 @@
-use crate::audio_graph::AudioGraph;
+use crate::{audio_graph::AudioGraph, CHANNEL_COUNT};
 use midi_control::{Channel, ControlEvent};
 
-const VOLUME_CONTROL: u8 = 21;
-const FILTER_FREQUENCY: u8 = 22;
-const FILTER_Q: u8 = 23;
+enum ControlType {
+    Volume,
+    FilterFrequency,
+    FilterQ,
+}
 
 pub struct MessageProcessor;
 
 impl MessageProcessor {
-    pub fn process_control_change(channel: Channel, event: ControlEvent, audio_graph: &AudioGraph) {
-        println!("ControlChange: {:?}, event: {:?}", channel, event);
+    pub fn process_control_change(
+        midi_channel: Channel,
+        event: ControlEvent,
+        audio_graph: &AudioGraph,
+    ) {
+        println!("ControlChange: {:?}, event: {:?}", midi_channel, event);
 
-        if channel != Channel::Ch8 {
+        if midi_channel != Channel::Ch1 {
             return;
         }
 
-        let channel = audio_graph.get_channel(0).unwrap();
+        match parse_control(event.control) {
+            Some((channel, _)) if channel >= CHANNEL_COUNT => (),
 
-        match event.control {
-            VOLUME_CONTROL => {
+            Some((channel, ControlType::Volume)) => {
+                let channel = audio_graph.get_channel(channel).unwrap();
                 let level = midi_to_percent(event.value);
                 channel.set_volume(level);
             }
 
-            FILTER_FREQUENCY => {
+            Some((channel, ControlType::FilterFrequency)) => {
+                let channel = audio_graph.get_channel(channel).unwrap();
                 let freq = midi_to_freq(event.value);
                 println!("filter freq: {}", freq);
                 channel.set_filter_frequency(freq);
             }
 
-            FILTER_Q => {
+            Some((channel, ControlType::FilterQ)) => {
+                let channel = audio_graph.get_channel(channel).unwrap();
                 let q = midi_to_percent(event.value);
                 println!("filter q: {}", q);
                 channel.set_filter_q(q);
             }
 
-            _ => {}
+            None => (),
         };
+    }
+}
+
+fn parse_control(control: u8) -> Option<(usize, ControlType)> {
+    let control = control as usize;
+    let control_type = control % 10;
+    let channel = control / 10 - 1;
+
+    match control_type {
+        0 => Some((channel, ControlType::Volume)),
+        1 => Some((channel, ControlType::FilterFrequency)),
+        2 => Some((channel, ControlType::FilterQ)),
+        _ => None,
     }
 }
 
