@@ -5,7 +5,8 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 // https://github.com/mmckegg/rust-loop-drop/blob/master/src/midi_connection.rs
 
 /// String to look for when enumerating the MIDI devices
-const DEVICE: &str = "Launch Control";
+// const DEVICE: &str = "Launch Control";
+const DEVICE: &str = "Faderfox EC4";
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
