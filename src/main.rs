@@ -1,9 +1,11 @@
-use midi_control::{Channel, MidiMessage};
+use midi_control::MidiMessage;
 
 mod audio_graph;
+mod message_processor;
 mod midi;
 
 use crate::audio_graph::AudioGraph;
+use crate::message_processor::MessageProcessor;
 use crate::midi::Midi;
 
 const VOLUME_CONTROL: u8 = 21;
@@ -31,35 +33,8 @@ fn main() -> Result<(), Error> {
 
     for midi_msg in midi_rx {
         match midi_msg {
-            MidiMessage::ControlChange(ch, ev) => {
-                println!("ControlChange: {:?}, ev: {:?}", ch, ev);
-
-                let channel = audio_graph.get_channel(0).unwrap();
-
-                if ch != Channel::Ch8 {
-                    continue;
-                }
-
-                match ev.control {
-                    VOLUME_CONTROL => {
-                        let level = midi_to_percent(ev.value);
-                        channel.set_volume(level);
-                    }
-
-                    FILTER_FREQUENCY => {
-                        let freq = midi_to_freq(ev.value);
-                        println!("filter freq: {}", freq);
-                        channel.set_filter_frequency(freq);
-                    }
-
-                    FILTER_Q => {
-                        let q = midi_to_percent(ev.value);
-                        println!("filter q: {}", q);
-                        channel.set_filter_q(q);
-                    }
-
-                    _ => {}
-                };
+            MidiMessage::ControlChange(channel, event) => {
+                MessageProcessor::process_control_change(channel, event, &audio_graph)
             }
             _ => {}
         }
@@ -67,23 +42,4 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn midi_to_percent(midi_value: u8) -> f32 {
-    let value = 1.0 / 127.0 * midi_value as f32;
-
-    if value < 0.00001 {
-        return 0.00001;
-    }
-
-    value
-}
-
-// TODO: this is wrong, for testing only
-fn midi_to_freq(midi_value: u8) -> f32 {
-    let value: i32 = midi_value as i32;
-
-    if value < 1 {
-        return 1.0;
-    }
-
-    value.pow(2) as f32
 }
