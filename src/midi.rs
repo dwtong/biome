@@ -36,7 +36,7 @@ impl Midi {
                 move |timestamp, data, tx| {
                     let msg = MidiMessage::from(data);
                     println!("{}: received {:?} => {:?}", timestamp, data, msg);
-                    tx.send(msg).unwrap();
+                    tx.send(msg).expect("message transmitted on mpsc channel");
                 },
                 tx,
             )

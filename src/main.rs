@@ -36,6 +36,7 @@ fn main() -> Result<(), Error> {
         match midi_msg {
             MidiMessage::ControlChange(channel, event) => {
                 MessageProcessor::process_control_change(channel, event, &audio_graph)
+                    .unwrap_or_else(|error| eprintln!("{}", error))
             }
             _ => {}
         }
