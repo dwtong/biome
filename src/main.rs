@@ -1,10 +1,13 @@
 use midi_control::MidiMessage;
+use monome::{KeyDirection, MonomeEvent};
 
 mod audio_graph;
+mod grid;
 mod message_processor;
 mod midi;
 
 use crate::audio_graph::AudioGraph;
+use crate::grid::Grid;
 use crate::message_processor::MessageProcessor;
 use crate::midi::Midi;
 
@@ -18,10 +21,10 @@ const SAMPLE_FILES: [&str; CHANNEL_COUNT] = [
 
 #[derive(Debug, thiserror::Error)]
 enum Error {
-    #[error("failed to connect midi")]
-    Midi(#[from] midi::Error),
     #[error("failed to control audio graph")]
     AudioGraph(#[from] audio_graph::Error),
+    #[error("failed to connect midi")]
+    Midi(#[from] midi::Error),
 }
 
 fn main() -> Result<(), Error> {
@@ -30,6 +33,27 @@ fn main() -> Result<(), Error> {
 
     for channel in 0..CHANNEL_COUNT {
         load_and_play_file_for_channel(&audio_graph, channel)?;
+    }
+
+    if let Ok(mut grid) = Grid::connect() {
+        loop {
+            match grid.poll() {
+                Some(MonomeEvent::GridKey { x, y, direction }) => match direction {
+                    KeyDirection::Down => {
+                        println!("Key pressed: {}x{}", x, y);
+                        grid.lit();
+                    }
+                    KeyDirection::Up => {
+                        println!("Key released: {}x{}", x, y);
+                        grid.unlit();
+                    }
+                },
+                _ => {
+                    break;
+                }
+            }
+        }
+        grid.lit();
     }
 
     for midi_msg in midi_rx {
