@@ -1,6 +1,8 @@
-use std::println;
+use std::{println, sync::mpsc::Sender, thread};
 
-use monome::{Monome, MonomeDeviceType, MonomeEvent};
+use monome::{KeyDirection, Monome, MonomeDeviceType, MonomeEvent};
+
+use crate::message::ControlMessage;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -9,6 +11,10 @@ pub enum Error {
     //     #[error("failed to connect to midi input device")]
     // ConnectInput(#[from] ConnectError<MidiInput>),
 }
+
+const GRID_X: usize = 16;
+const GRID_Y: usize = 8;
+const GRID_LENGTH: usize = GRID_X * GRID_Y;
 
 pub struct Grid {
     device: Monome,
@@ -27,24 +33,41 @@ impl Grid {
         Ok(Grid { device })
     }
 
+    pub fn start(mut self, tx: Sender<ControlMessage>) {
+        thread::spawn(move || {
+            loop {
+                match self.poll() {
+                    Some(MonomeEvent::GridKey { x, y, direction }) => match direction {
+                        KeyDirection::Down => {
+                            println!("Key pressed: {}x{}", x, y);
+                            tx.send(ControlMessage::SetChannelSampleFile(1, x as usize))
+                                .unwrap();
+                            self.lit();
+                        }
+                        KeyDirection::Up => {
+                            println!("Key released: {}x{}", x, y);
+                            self.unlit();
+                        }
+                    },
+                    _ => {
+                        // break;
+                    }
+                }
+            }
+        });
+    }
+
     pub fn poll(&mut self) -> Option<MonomeEvent> {
-        println!("poll");
         self.device.poll()
     }
 
     pub fn unlit(&mut self) {
-        let mut grid = [false; 128];
-        for i in 0..128 {
-            grid[i] = (i + 1) % 2 == 0;
-        }
+        let grid: [bool; GRID_LENGTH] = [false; GRID_LENGTH];
         self.device.set_all(&grid);
     }
 
     pub fn lit(&mut self) {
-        let mut grid = [true; 128];
-        for i in 0..128 {
-            grid[i] = (i + 1) % 2 == 0;
-        }
+        let grid: [bool; GRID_LENGTH] = [true; GRID_LENGTH];
         self.device.set_all(&grid);
     }
 }

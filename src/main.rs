@@ -1,15 +1,14 @@
-use midi_control::MidiMessage;
-use monome::{KeyDirection, MonomeEvent};
+use grid::Grid;
+use message::{process_message, ControlMessage};
+use midi::Midi;
+use std::sync::mpsc::channel;
 
 mod audio_graph;
 mod grid;
-mod message_processor;
+mod message;
 mod midi;
 
 use crate::audio_graph::AudioGraph;
-use crate::grid::Grid;
-use crate::message_processor::MessageProcessor;
-use crate::midi::Midi;
 
 const CHANNEL_COUNT: usize = 4;
 const SAMPLE_FILES: [&str; CHANNEL_COUNT] = [
@@ -28,43 +27,20 @@ enum Error {
 }
 
 fn main() -> Result<(), Error> {
-    let (_midi, midi_rx) = Midi::start()?;
+    let (tx, rx) = channel::<ControlMessage>();
+    let _midi = Midi::start(tx.clone())?;
+    let grid = Grid::connect().unwrap();
+    grid.start(tx);
     let audio_graph = AudioGraph::new(4);
 
     for channel in 0..CHANNEL_COUNT {
         load_and_play_file_for_channel(&audio_graph, channel)?;
     }
 
-    if let Ok(mut grid) = Grid::connect() {
-        loop {
-            match grid.poll() {
-                Some(MonomeEvent::GridKey { x, y, direction }) => match direction {
-                    KeyDirection::Down => {
-                        println!("Key pressed: {}x{}", x, y);
-                        grid.lit();
-                    }
-                    KeyDirection::Up => {
-                        println!("Key released: {}x{}", x, y);
-                        grid.unlit();
-                    }
-                },
-                _ => {
-                    break;
-                }
-            }
-        }
-        grid.lit();
+    for control_message in rx {
+        process_message(control_message, &audio_graph).unwrap();
     }
 
-    for midi_msg in midi_rx {
-        match midi_msg {
-            MidiMessage::ControlChange(channel, event) => {
-                MessageProcessor::process_control_change(channel, event, &audio_graph)
-                    .unwrap_or_else(|error| eprintln!("{}", error))
-            }
-            _ => {}
-        }
-    }
     Ok(())
 }
 
