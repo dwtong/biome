@@ -22,18 +22,17 @@ impl AudioGraphChannel {
     fn new(context: &AudioContext, destination: &GainNode) -> Self {
         let volume = context.create_gain();
         volume.gain().set_value(0.5);
+        volume.connect(destination);
 
         let filter = context.create_biquad_filter();
         filter.set_type(web_audio_api::node::BiquadFilterType::Bandpass);
         filter.frequency().set_value(1800.0);
         filter.q().set_value(0.667);
+        filter.connect(&volume);
 
         let source = context.create_buffer_source();
         source.set_loop(true);
-
         source.connect(&filter);
-        filter.connect(&volume);
-        volume.connect(destination);
 
         Self {
             filter,
@@ -54,10 +53,18 @@ impl AudioGraphChannel {
         self.volume.gain().set_value(value);
     }
 
-    pub fn load(&self, context: &AudioContext, path: &str) -> Result<(), Error> {
+    pub fn load(&mut self, context: &AudioContext, path: &str) -> Result<(), Error> {
         let file = File::open(path)?;
         let buffer = context.decode_audio_data_sync(file)?;
-        self.source.set_buffer(buffer);
+        let source = context.create_buffer_source();
+        source.set_loop(true);
+        source.connect(&self.filter);
+        source.set_buffer(buffer);
+
+        // out with the old and in with the new
+        self.source.disconnect();
+        self.source = source;
+
         Ok(())
     }
 
@@ -73,7 +80,7 @@ pub struct AudioGraph {
 }
 
 impl AudioGraph {
-    pub fn new(num_channels: u8) -> Self {
+    pub fn new(num_channels: usize) -> Self {
         let context = AudioContext::default();
 
         let volume = context.create_gain();
@@ -95,7 +102,9 @@ impl AudioGraph {
         self.channels.get(channel_index)
     }
 
-    pub fn context(&self) -> &AudioContext {
-        &self.context
+    pub fn load_and_play_for_channel(&mut self, channel_index: usize, file_path: &str) {
+        let channel = self.channels.get_mut(channel_index).unwrap();
+        channel.load(&self.context, file_path).unwrap();
+        channel.play();
     }
 }

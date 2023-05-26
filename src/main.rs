@@ -1,5 +1,5 @@
 use grid::Grid;
-use message::{process_message, ControlMessage};
+use message::ControlMessage;
 use midi::Midi;
 use std::sync::mpsc::channel;
 
@@ -32,28 +32,15 @@ fn main() -> Result<(), Error> {
     let _midi = Midi::start(tx.clone())?;
     let grid = Grid::connect().unwrap();
     grid.start(tx);
-    let audio_graph = AudioGraph::new(4);
+    let mut audio_graph = AudioGraph::new(CHANNEL_COUNT);
 
     for channel in 0..CHANNEL_COUNT {
-        load_and_play_file_for_channel(&audio_graph, channel)?;
+        audio_graph.load_and_play_for_channel(channel, SAMPLE_FILES[channel]);
     }
 
     for control_message in rx {
-        process_message(control_message, &audio_graph).unwrap();
+        message::process_message(control_message, &mut audio_graph).unwrap();
     }
 
-    Ok(())
-}
-
-fn load_and_play_file_for_channel(
-    audio_graph: &AudioGraph,
-    channel_index: usize,
-) -> Result<(), Error> {
-    let context = audio_graph.context();
-    let channel = audio_graph.get_channel(channel_index).unwrap();
-    let sample_file = SAMPLE_FILES.get(channel_index).unwrap();
-
-    channel.load(context, sample_file)?;
-    channel.play();
     Ok(())
 }

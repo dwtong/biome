@@ -1,6 +1,6 @@
 use std::println;
 
-use crate::audio_graph::AudioGraph;
+use crate::{audio_graph::AudioGraph, SAMPLE_FILES};
 
 type AudioChannel = usize;
 
@@ -18,7 +18,7 @@ pub enum ControlMessage {
     SetChannelSampleFile(AudioChannel, usize),
 }
 
-pub fn process_message(msg: ControlMessage, audio_graph: &AudioGraph) -> Result<(), Error> {
+pub fn process_message(msg: ControlMessage, audio_graph: &mut AudioGraph) -> Result<(), Error> {
     println!("Message: {:?}", msg);
 
     match msg {
@@ -43,8 +43,9 @@ pub fn process_message(msg: ControlMessage, audio_graph: &AudioGraph) -> Result<
             channel.set_filter_q(q);
         }
 
-        ControlMessage::SetChannelSampleFile(channel_index, sample) => {
-            println!("Set sample {} for {}", sample, channel_index);
+        ControlMessage::SetChannelSampleFile(channel_index, sample_index) => {
+            println!("Set sample {} for {}", sample_index, channel_index);
+            audio_graph.load_and_play_for_channel(channel_index, SAMPLE_FILES[sample_index]);
         }
     }
 
