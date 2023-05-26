@@ -10,7 +10,8 @@ mod midi;
 
 use crate::audio_graph::AudioGraph;
 
-const CHANNEL_COUNT: usize = 4;
+pub const CHANNEL_COUNT: usize = 4;
+
 const SAMPLE_FILES: [&str; CHANNEL_COUNT] = [
     "samples/bird.wav",
     "samples/rain.wav",
