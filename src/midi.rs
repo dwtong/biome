@@ -1,6 +1,6 @@
 use midi_control::{Channel, ControlEvent, MidiMessage};
 use midir::{self, ConnectError, MidiInput, MidiInputConnection};
-use std::sync::mpsc::Sender;
+use std::{eprintln, sync::mpsc::Sender};
 
 use crate::message::ControlMessage;
 
@@ -43,10 +43,12 @@ impl Midi {
                     let midi_msg = MidiMessage::from(data);
                     println!("{}: received {:?} => {:?}", timestamp, data, tx);
                     if let MidiMessage::ControlChange(channel, event) = midi_msg {
-                        let ctrl_msg = process_control_change(channel, event).unwrap();
-                        // .unwrap_or_else(|error| eprintln!("{}", error));
-                        tx.send(ctrl_msg)
-                            .expect("message transmitted on mpsc channel");
+                        match process_control_change(channel, event) {
+                            Ok(ctrl_msg) => tx
+                                .send(ctrl_msg)
+                                .expect("message transmitted on mpsc channel"),
+                            Err(error) => eprintln!("Couldn't process control change: {}", error),
+                        }
                     }
                 },
                 tx,
