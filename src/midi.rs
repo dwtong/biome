@@ -1,5 +1,5 @@
 use midi_control::{Channel, ControlEvent, MidiMessage};
-use midir::{self, ConnectError, MidiInput, MidiInputConnection};
+use midir::{self, ConnectError, InitError, MidiInput, MidiInputConnection};
 use std::{eprintln, sync::mpsc::Sender};
 
 use crate::message::ControlMessage;
@@ -9,6 +9,7 @@ use crate::message::ControlMessage;
 /// String to look for when enumerating the MIDI devices
 // const DEVICE: &str = "Launch Control";
 const DEVICE: &str = "Faderfox EC4";
+const CLIENT_NAME: &str = "WAP";
 
 const MIDI_CHANNEL: Channel = Channel::Ch1;
 
@@ -18,6 +19,8 @@ pub enum Error {
     DeviceNotFound,
     #[error("failed to connect to midi input device")]
     ConnectInput(#[from] ConnectError<MidiInput>),
+    #[error("failed to initialise midi input device")]
+    DeviceInit(#[from] InitError),
     #[error("midi message is on incorrect midi channel")]
     IncorrectMidiChannel,
     #[error("midi value is not assigned to a control type")]
@@ -30,7 +33,7 @@ pub struct Midi {
 
 impl Midi {
     pub fn start(tx: Sender<ControlMessage>) -> Result<Self, Error> {
-        let midi_input = midir::MidiInput::new("MIDITest").unwrap();
+        let midi_input = midir::MidiInput::new(CLIENT_NAME)?;
         let device_port = find_port(&midi_input).ok_or(Error::DeviceNotFound)?;
 
         println!("Port: {:?}", midi_input.port_name(&device_port));

@@ -103,8 +103,13 @@ impl AudioGraph {
     }
 
     pub fn load_and_play_for_channel(&mut self, channel_index: usize, file_path: &str) {
-        let channel = self.channels.get_mut(channel_index).unwrap();
-        channel.load(&self.context, file_path).unwrap();
+        let channel = self
+            .channels
+            .get_mut(channel_index)
+            .expect("Channel index in range");
+        channel
+            .load(&self.context, file_path)
+            .expect("Sample file loaded into audio channel");
         channel.play();
     }
 }
