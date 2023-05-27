@@ -46,8 +46,7 @@ impl Grid {
             .into_iter()
             .find(|d| d.device_type() == MonomeDeviceType::Grid)
             .ok_or(Error::DeviceNotFound)?;
-        let device =
-            Monome::from_device(&device, "/prefix").map_err(|string| Error::FromDevice(string))?;
+        let device = Monome::from_device(&device, "/prefix").map_err(Error::FromDevice)?;
         let channels = [GridChannel::new(); CHANNEL_COUNT];
 
         Ok(Grid {
@@ -116,15 +115,15 @@ impl Grid {
         let sample_count = selected_channel.sample_count;
         let selected_sample = selected_channel.selected_sample;
 
-        for index in 0..grid_mask.len() {
+        for (index, button_mask) in grid_mask.iter_mut().enumerate() {
             if index >= sample_count {
                 break;
             }
             if index == selected_sample {
-                grid_mask[index] = 10;
+                *button_mask = 10;
                 continue;
             }
-            grid_mask[index] = 5;
+            *button_mask = 5;
         }
         grid_mask
     }
@@ -132,7 +131,7 @@ impl Grid {
     pub fn match_action(&mut self, coords: (usize, usize)) -> Option<ControlMessage> {
         match coords {
             (x, 7) if x < CHANNEL_COUNT => {
-                self.selected_channel_index = x as usize;
+                self.selected_channel_index = x;
                 None
             }
             (x, y) if x < SAMPLE_GRID_X && y < SAMPLE_GRID_Y => {

@@ -42,14 +42,11 @@ impl Midi {
                 move |timestamp, data, tx| {
                     let midi_msg = MidiMessage::from(data);
                     println!("{}: received {:?} => {:?}", timestamp, data, tx);
-                    match midi_msg {
-                        MidiMessage::ControlChange(channel, event) => {
-                            let ctrl_msg = process_control_change(channel, event).unwrap();
-                            // .unwrap_or_else(|error| eprintln!("{}", error));
-                            tx.send(ctrl_msg)
-                                .expect("message transmitted on mpsc channel");
-                        }
-                        _ => {}
+                    if let MidiMessage::ControlChange(channel, event) = midi_msg {
+                        let ctrl_msg = process_control_change(channel, event).unwrap();
+                        // .unwrap_or_else(|error| eprintln!("{}", error));
+                        tx.send(ctrl_msg)
+                            .expect("message transmitted on mpsc channel");
                     }
                 },
                 tx,

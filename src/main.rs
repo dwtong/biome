@@ -34,8 +34,8 @@ fn main() -> Result<(), Error> {
     grid.start(tx);
     let mut audio_graph = AudioGraph::new(CHANNEL_COUNT);
 
-    for channel in 0..CHANNEL_COUNT {
-        audio_graph.load_and_play_for_channel(channel, SAMPLE_FILES[channel]);
+    for (channel_index, _) in SAMPLE_FILES.iter().enumerate().take(CHANNEL_COUNT) {
+        audio_graph.load_and_play_for_channel(channel_index, SAMPLE_FILES[channel_index]);
     }
 
     for control_message in rx {
