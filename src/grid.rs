@@ -1,4 +1,4 @@
-use crate::{message::ControlMessage, CHANNEL_COUNT, SAMPLE_FILES};
+use crate::{message::ControlMessage, CHANNEL_COUNT};
 use monome::{KeyDirection, Monome, MonomeDeviceType, MonomeEvent};
 use std::{println, sync::mpsc::Sender, thread};
 
@@ -10,15 +10,9 @@ const SAMPLE_GRID: usize = SAMPLE_GRID_X * SAMPLE_GRID_Y;
 pub enum Error {
     #[error("failed to find monome grid device")]
     DeviceNotFound,
-    //     #[error("failed to connect to midi input device")]
-    // ConnectInput(#[from] ConnectError<MidiInput>),
     #[error("failed to create grid from monome device")]
     FromDevice(String),
 }
-
-// const GRID_X: usize = 16;
-// const GRID_Y: usize = 8;
-// const GRID_LENGTH: usize = GRID_X * GRID_Y;
 
 #[derive(Clone, Copy)]
 pub struct GridChannel {
@@ -30,8 +24,12 @@ impl GridChannel {
     fn new() -> Self {
         GridChannel {
             selected_sample: 0,
-            sample_count: SAMPLE_FILES.len(),
+            sample_count: 8,
         }
+    }
+
+    fn set_selected_sample(&mut self, sample: usize) {
+        self.selected_sample = sample;
     }
 }
 
@@ -44,7 +42,7 @@ pub struct Grid {
 impl Grid {
     pub fn connect() -> Result<Self, Error> {
         let device = Monome::enumerate_devices()
-            .unwrap()
+            .expect("Monome setup successfully")
             .into_iter()
             .find(|d| d.device_type() == MonomeDeviceType::Grid)
             .ok_or(Error::DeviceNotFound)?;
@@ -69,8 +67,8 @@ impl Grid {
                 direction: KeyDirection::Down,
             }) = self.device.poll()
             {
-                if let Some(control_message) = self.match_action((x, y)) {
-                    tx.send(control_message).unwrap();
+                if let Some(control_message) = self.match_action((x as usize, y as usize)) {
+                    tx.send(control_message).expect("Grid control message sent");
                 }
                 self.redraw();
             }
@@ -85,7 +83,7 @@ impl Grid {
             .into_iter()
             .enumerate()
             .for_each(|(index, value)| left_mask[index] = value);
-        self.redraw_channel_strip()
+        self.map_channel_strip()
             .into_iter()
             .enumerate()
             .for_each(|(index, value)| left_mask[index + channel_offset] = value);
@@ -96,7 +94,11 @@ impl Grid {
         self.channels.get(self.selected_channel_index)
     }
 
-    fn redraw_channel_strip(&mut self) -> [u8; 8] {
+    pub fn selected_channel_mut(&mut self) -> Option<&mut GridChannel> {
+        self.channels.get_mut(self.selected_channel_index)
+    }
+
+    fn map_channel_strip(&mut self) -> [u8; 8] {
         let mut grid_mask = [0; 8];
         for (index, _) in self.channels.iter().enumerate() {
             if self.selected_channel_index == index {
@@ -110,12 +112,12 @@ impl Grid {
 
     fn map_sample_selector(&mut self) -> [u8; SAMPLE_GRID] {
         let mut grid_mask = [0; SAMPLE_GRID];
-        let selected_channel = self.selected_channel().unwrap();
+        let selected_channel = self.selected_channel().expect("Selected channel exists");
         let sample_count = selected_channel.sample_count;
         let selected_sample = selected_channel.selected_sample;
 
         for index in 0..grid_mask.len() {
-            if index > sample_count {
+            if index >= sample_count {
                 break;
             }
             if index == selected_sample {
@@ -127,18 +129,26 @@ impl Grid {
         grid_mask
     }
 
-    pub fn match_action(&mut self, coords: (i32, i32)) -> Option<ControlMessage> {
+    pub fn match_action(&mut self, coords: (usize, usize)) -> Option<ControlMessage> {
         match coords {
-            (x, 7) if x < CHANNEL_COUNT as i32 => {
+            (x, 7) if x < CHANNEL_COUNT => {
                 self.selected_channel_index = x as usize;
                 None
             }
-            (x, y) if x < (SAMPLE_GRID_X as i32) && y < (SAMPLE_GRID_Y as i32) => {
-                let sample_file = x + (SAMPLE_GRID_X as i32) * y;
+            (x, y) if x < SAMPLE_GRID_X && y < SAMPLE_GRID_Y => {
+                let sample_file_index = x + SAMPLE_GRID_X * y;
+                let selected_channel = self
+                    .selected_channel_mut()
+                    .expect("Selected channel exists");
+
+                if sample_file_index >= selected_channel.sample_count {
+                    return None;
+                }
+                selected_channel.set_selected_sample(sample_file_index);
 
                 Some(ControlMessage::SetChannelSampleFile(
                     self.selected_channel_index,
-                    sample_file as usize,
+                    sample_file_index,
                 ))
             }
             (x, y) => {
