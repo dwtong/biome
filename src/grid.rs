@@ -4,7 +4,7 @@ use std::{println, sync::mpsc::Sender, thread};
 
 const SAMPLE_GRID_X: usize = 8;
 const SAMPLE_GRID_Y: usize = 6;
-const MAX_SAMPLES: usize = SAMPLE_GRID_X * SAMPLE_GRID_Y;
+const SAMPLE_GRID: usize = SAMPLE_GRID_X * SAMPLE_GRID_Y;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -48,10 +48,8 @@ impl Grid {
             .into_iter()
             .find(|d| d.device_type() == MonomeDeviceType::Grid)
             .ok_or(Error::DeviceNotFound)?;
-
         let device =
             Monome::from_device(&device, "/prefix").map_err(|string| Error::FromDevice(string))?;
-
         let channels = [GridChannel::new(); CHANNEL_COUNT];
 
         Ok(Grid {
@@ -80,46 +78,53 @@ impl Grid {
     }
 
     pub fn redraw(&mut self) {
-        self.redraw_channel_strip();
-        self.redraw_sample_selector();
+        let channel_offset = 56;
+        let mut left_mask = [0; 64];
+
+        self.map_sample_selector()
+            .into_iter()
+            .enumerate()
+            .for_each(|(index, value)| left_mask[index] = value);
+        self.redraw_channel_strip()
+            .into_iter()
+            .enumerate()
+            .for_each(|(index, value)| left_mask[index + channel_offset] = value);
+        self.device.map(0, 0, &left_mask);
     }
 
     pub fn selected_channel(&self) -> Option<&GridChannel> {
         self.channels.get(self.selected_channel_index)
     }
 
-    fn redraw_channel_strip(&mut self) {
+    fn redraw_channel_strip(&mut self) -> [u8; 8] {
+        let mut grid_mask = [0; 8];
         for (index, _) in self.channels.iter().enumerate() {
-            let x = index as i32;
-            let y = 7;
-            let brightness = if self.selected_channel_index == index {
-                10
+            if self.selected_channel_index == index {
+                grid_mask[index] = 10;
             } else {
-                5
+                grid_mask[index] = 5;
             };
-            self.device.set(x, y, brightness);
         }
+        grid_mask
     }
 
-    fn redraw_sample_selector(&mut self) {
+    fn map_sample_selector(&mut self) -> [u8; SAMPLE_GRID] {
+        let mut grid_mask = [0; SAMPLE_GRID];
         let selected_channel = self.selected_channel().unwrap();
         let sample_count = selected_channel.sample_count;
         let selected_sample = selected_channel.selected_sample;
 
-        for index in 0..MAX_SAMPLES {
-            let pos = index as i32;
-            let x = pos % SAMPLE_GRID_X as i32;
-            let y = pos / SAMPLE_GRID_X as i32;
-
+        for index in 0..grid_mask.len() {
             if index > sample_count {
                 break;
             }
             if index == selected_sample {
-                self.device.set(x, y, 10);
+                grid_mask[index] = 10;
                 continue;
             }
-            self.device.set(x, y, 5);
+            grid_mask[index] = 5;
         }
+        grid_mask
     }
 
     pub fn match_action(&mut self, coords: (i32, i32)) -> Option<ControlMessage> {
@@ -128,7 +133,6 @@ impl Grid {
                 self.selected_channel_index = x as usize;
                 None
             }
-
             (x, y) if x < (SAMPLE_GRID_X as i32) && y < (SAMPLE_GRID_Y as i32) => {
                 let sample_file = x + (SAMPLE_GRID_X as i32) * y;
 
@@ -137,7 +141,6 @@ impl Grid {
                     sample_file as usize,
                 ))
             }
-
             (x, y) => {
                 println!("Key press ignored: {}x{}", x, y);
                 None
