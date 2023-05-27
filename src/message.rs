@@ -44,8 +44,9 @@ pub fn process_message(msg: ControlMessage, audio_graph: &mut AudioGraph) -> Res
         }
 
         ControlMessage::SetChannelSampleFile(channel_index, sample_index) => {
-            println!("Set sample {} for {}", sample_index, channel_index);
-            audio_graph.load_and_play_for_channel(channel_index, SAMPLE_FILES[sample_index]);
+            if let Some(sample_file) = SAMPLE_FILES.get(sample_index) {
+                audio_graph.load_and_play_for_channel(channel_index, sample_file);
+            };
         }
     }
 
