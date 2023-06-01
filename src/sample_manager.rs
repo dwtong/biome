@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::fs;
 use std::{io, path::PathBuf};
 
@@ -11,15 +12,26 @@ const SAMPLE_DIRS: [&str; CHANNEL_COUNT] = [
 ];
 
 #[derive(Debug)]
-pub struct SampleDir(Vec<PathBuf>);
+pub struct SampleDir {
+    path: PathBuf,
+}
 
 impl SampleDir {
-    fn from_path(path: &str) -> Result<Self, io::Error> {
-        let entries = fs::read_dir(path)?
-            .map(|dir| dir.map(|e| e.path()))
+    fn from_path(path: &str) -> Self {
+        Self { path: path.into() }
+    }
+
+    fn entries(&self) -> Result<Vec<PathBuf>, io::Error> {
+        let entries = fs::read_dir(&self.path)?
+            .map(|dir| dir.map(|entry| entry.path()))
             .collect::<Result<Vec<_>, io::Error>>()?;
 
-        Ok(SampleDir(entries))
+        let entries: Vec<PathBuf> = entries
+            .into_iter()
+            .filter(|entry| entry.extension() == Some(OsStr::new("wav")))
+            .collect();
+
+        Ok(entries)
     }
 }
 
@@ -30,7 +42,8 @@ pub struct SampleManager {
 
 impl SampleManager {
     pub fn new() -> Self {
-        let dirs = SAMPLE_DIRS.map(|path| SampleDir::from_path(path).unwrap());
+        let dirs = SAMPLE_DIRS.map(|path| SampleDir::from_path(path));
+        println!("{:?}", dirs[0].entries());
         Self { dirs }
     }
 
@@ -39,6 +52,6 @@ impl SampleManager {
         channel_index: usize,
         sample_index: usize,
     ) -> Option<&PathBuf> {
-        self.dirs.get(channel_index)?.0.get(sample_index)
+        todo!()
     }
 }
