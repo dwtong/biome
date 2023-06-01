@@ -1,6 +1,6 @@
 use std::println;
 
-use crate::{audio_graph::AudioGraph, SAMPLE_FILES};
+use crate::audio_graph::AudioGraph;
 
 type AudioChannel = usize;
 
@@ -44,9 +44,9 @@ pub fn process_message(msg: ControlMessage, audio_graph: &mut AudioGraph) -> Res
         }
 
         ControlMessage::SetChannelSampleFile(channel_index, sample_index) => {
-            if let Some(sample_file) = SAMPLE_FILES.get(sample_index) {
-                audio_graph.load_and_play_for_channel(channel_index, sample_file);
-            };
+            // if let Some(sample_file) = SAMPLE_FILES.get(sample_index) {
+            //     audio_graph.load_and_play_for_channel(channel_index, sample_file);
+            // };
         }
     }
 

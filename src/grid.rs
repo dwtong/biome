@@ -14,28 +14,9 @@ pub enum Error {
     FromDevice(String),
 }
 
-#[derive(Clone, Copy)]
-pub struct GridChannel {
-    selected_sample: usize,
-    sample_count: usize,
-}
-
-impl GridChannel {
-    fn new() -> Self {
-        GridChannel {
-            selected_sample: 0,
-            sample_count: 8,
-        }
-    }
-
-    fn set_selected_sample(&mut self, sample: usize) {
-        self.selected_sample = sample;
-    }
-}
-
 pub struct Grid {
     device: Monome,
-    channels: [GridChannel; CHANNEL_COUNT],
+    selected_sample_indexes: [usize; CHANNEL_COUNT],
     selected_channel_index: usize,
 }
 
@@ -47,11 +28,11 @@ impl Grid {
             .find(|d| d.device_type() == MonomeDeviceType::Grid)
             .ok_or(Error::DeviceNotFound)?;
         let device = Monome::from_device(&device, "/prefix").map_err(Error::FromDevice)?;
-        let channels = [GridChannel::new(); CHANNEL_COUNT];
+        let selected_sample_indexes = [0; CHANNEL_COUNT];
 
         Ok(Grid {
             device,
-            channels,
+            selected_sample_indexes,
             selected_channel_index: 0,
         })
     }
@@ -89,43 +70,46 @@ impl Grid {
         self.device.map(0, 0, &left_mask);
     }
 
-    pub fn selected_channel(&self) -> Option<&GridChannel> {
-        self.channels.get(self.selected_channel_index)
-    }
-
-    pub fn selected_channel_mut(&mut self) -> Option<&mut GridChannel> {
-        self.channels.get_mut(self.selected_channel_index)
-    }
-
     fn map_channel_strip(&mut self) -> [u8; 8] {
         let mut grid_mask = [0; 8];
-        for (index, _) in self.channels.iter().enumerate() {
+        (0..CHANNEL_COUNT).for_each(|index| {
             if self.selected_channel_index == index {
                 grid_mask[index] = 10;
             } else {
                 grid_mask[index] = 5;
             };
-        }
+        });
         grid_mask
     }
 
     fn map_sample_selector(&mut self) -> [u8; SAMPLE_GRID] {
         let mut grid_mask = [0; SAMPLE_GRID];
-        let selected_channel = self.selected_channel().expect("Selected channel exists");
-        let sample_count = selected_channel.sample_count;
-        let selected_sample = selected_channel.selected_sample;
+        // let selected_channel = self.selected_channel().expect("Selected channel exists");
+        // let sample_count = selected_channel.sample_count;
+        let sample_count = 20;
+        let selected_sample = self.selected_sample();
 
         for (index, button_mask) in grid_mask.iter_mut().enumerate() {
             if index >= sample_count {
                 break;
             }
-            if index == selected_sample {
+            if index == *selected_sample {
                 *button_mask = 10;
                 continue;
             }
             *button_mask = 5;
         }
         grid_mask
+    }
+
+    pub fn selected_sample(&self) -> &usize {
+        self.selected_sample_indexes
+            .get(self.selected_channel_index)
+            .expect("Selected sample index within bounds")
+    }
+
+    pub fn set_selected_sample(&mut self, selected_sample: usize) {
+        self.selected_sample_indexes[self.selected_channel_index] = selected_sample;
     }
 
     pub fn match_action(&mut self, coords: (usize, usize)) -> Option<ControlMessage> {
@@ -136,14 +120,12 @@ impl Grid {
             }
             (x, y) if x < SAMPLE_GRID_X && y < SAMPLE_GRID_Y => {
                 let sample_file_index = x + SAMPLE_GRID_X * y;
-                let selected_channel = self
-                    .selected_channel_mut()
-                    .expect("Selected channel exists");
+                let sample_count = 20;
 
-                if sample_file_index >= selected_channel.sample_count {
+                if sample_file_index >= sample_count {
                     return None;
                 }
-                selected_channel.set_selected_sample(sample_file_index);
+                self.set_selected_sample(sample_file_index);
 
                 Some(ControlMessage::SetChannelSampleFile(
                     self.selected_channel_index,
