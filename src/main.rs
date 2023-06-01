@@ -2,7 +2,7 @@ use grid::Grid;
 use message::ControlMessage;
 use midi::Midi;
 use sample_manager::SampleManager;
-use std::sync::mpsc::channel;
+use std::{panic, process, sync::mpsc::channel};
 
 mod audio_graph;
 mod grid;
@@ -27,19 +27,25 @@ enum Error {
 }
 
 fn main() -> Result<(), Error> {
-    let (tx, rx) = channel::<ControlMessage>();
-    let _midi = Midi::start(tx.clone())?;
-    let grid = Grid::connect()?;
-    grid.start(tx);
+    let (control_sender, control_receiver) = channel::<ControlMessage>();
+    let _midi = Midi::start(control_sender.clone())?;
+    let (grid, grid_sender) = Grid::connect()?;
+    grid.start(control_sender);
     let mut audio_graph = AudioGraph::new(CHANNEL_COUNT);
     let sample_manager = SampleManager::new();
     println!("sample manager: {:?}", sample_manager);
+
+    ctrlc::set_handler(move || {
+        grid_sender.send(grid::GridMessage::Clear).unwrap();
+        process::exit(130);
+    })
+    .expect("Error setting Ctrl-C handler");
 
     // for (channel_index, _) in SAMPLE_FILES.iter().enumerate().take(CHANNEL_COUNT) {
     //     audio_graph.load_and_play_for_channel(channel_index, SAMPLE_FILES[channel_index]);
     // }
 
-    for control_message in rx {
+    for control_message in control_receiver {
         message::process_message(control_message, &mut audio_graph)?;
     }
 
