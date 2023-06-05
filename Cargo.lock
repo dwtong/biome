@@ -66,6 +66,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "biome"
+version = "0.1.0"
+dependencies = [
+ "ctrlc",
+ "env_logger",
+ "midi-control",
+ "midir",
+ "monome-rs",
+ "thiserror",
+ "web-audio-api",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1870,19 +1883,6 @@ dependencies = [
  "smallvec 1.10.0",
  "symphonia",
  "vecmath",
-]
-
-[[package]]
-name = "web-audio-playground"
-version = "0.1.0"
-dependencies = [
- "ctrlc",
- "env_logger",
- "midi-control",
- "midir",
- "monome-rs",
- "thiserror",
- "web-audio-api",
 ]
 
 [[package]]

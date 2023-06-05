@@ -1,5 +1,5 @@
 [package]
-name = "web-audio-playground"
+name = "biome"
 version = "0.1.0"
 edition = "2021"
 
