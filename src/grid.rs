@@ -56,8 +56,10 @@ impl Grid {
         self.redraw();
 
         thread::spawn(move || loop {
-            for x in self.receiver.try_iter() {
-                println!("Got: {:?}", x);
+            if let Ok(message) = self.receiver.try_recv() {
+                match message {
+                    GridMessage::Clear => self.clear(),
+                }
             }
 
             if let Some(MonomeEvent::GridKey {
@@ -74,6 +76,11 @@ impl Grid {
                 self.redraw();
             }
         });
+    }
+
+    pub fn clear(&mut self) {
+        self.device.map(0, 0, &[0; 64]);
+        self.device.map(8, 0, &[0; 64]);
     }
 
     pub fn redraw(&mut self) {

@@ -2,7 +2,7 @@ use grid::Grid;
 use message::ControlMessage;
 use midi::Midi;
 use sample_manager::SampleManager;
-use std::{panic, process, sync::mpsc::channel};
+use std::{process, sync::mpsc::channel, time::Duration};
 
 mod audio_graph;
 mod grid;
@@ -37,6 +37,8 @@ fn main() -> Result<(), Error> {
 
     ctrlc::set_handler(move || {
         grid_sender.send(grid::GridMessage::Clear).unwrap();
+        // wait for grid to clear
+        std::thread::sleep(Duration::from_millis(100));
         process::exit(130);
     })
     .expect("Error setting Ctrl-C handler");
