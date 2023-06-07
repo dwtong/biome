@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::{fs::File, io};
 use web_audio_api::context::{AudioContext, BaseAudioContext};
 use web_audio_api::node::{
@@ -53,7 +54,7 @@ impl AudioGraphChannel {
         self.volume.gain().set_value(value);
     }
 
-    pub fn load(&mut self, context: &AudioContext, path: &str) -> Result<(), Error> {
+    pub fn load(&mut self, context: &AudioContext, path: &PathBuf) -> Result<(), Error> {
         let file = File::open(path)?;
         let buffer = context.decode_audio_data_sync(file)?;
         let source = context.create_buffer_source();
@@ -102,7 +103,7 @@ impl AudioGraph {
         self.channels.get(channel_index)
     }
 
-    pub fn load_and_play_for_channel(&mut self, channel_index: usize, file_path: &str) {
+    pub fn load_and_play_for_channel(&mut self, channel_index: usize, file_path: &PathBuf) {
         let channel = self
             .channels
             .get_mut(channel_index)

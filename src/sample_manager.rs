@@ -5,10 +5,10 @@ use std::{io, path::PathBuf};
 use crate::CHANNEL_COUNT;
 
 const SAMPLE_DIRS: [&str; CHANNEL_COUNT] = [
-    "~/Sync/audio/collections/field/rain/",
-    "~/Sync/audio/collections/field/wind/",
-    "~/Sync/audio/collections/field/wood/",
-    "~/Sync/audio/collections/field/water/",
+    "/Users/dan/Sync/audio/collections/field/rain/glass/",
+    "/Users/dan/Sync/audio/collections/field/wind/general/",
+    "/Users/dan/Sync/audio/collections/field/wood/misc/",
+    "/Users/dan/Sync/audio/collections/field/water/bubbles/",
 ];
 
 #[derive(Debug)]
@@ -43,7 +43,6 @@ pub struct SampleManager {
 impl SampleManager {
     pub fn new() -> Self {
         let dirs = SAMPLE_DIRS.map(SampleDir::from_path);
-        println!("{:?}", dirs[0].entries());
         Self { dirs }
     }
 
@@ -51,7 +50,9 @@ impl SampleManager {
         &self,
         channel_index: usize,
         sample_index: usize,
-    ) -> Option<&PathBuf> {
-        todo!()
+    ) -> Option<PathBuf> {
+        let entries = self.dirs.get(channel_index)?.entries().ok()?;
+        let path = entries.get(sample_index)?;
+        Some(path.clone())
     }
 }

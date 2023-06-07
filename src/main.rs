@@ -33,7 +33,6 @@ fn main() -> Result<(), Error> {
     grid.start(control_sender);
     let mut audio_graph = AudioGraph::new(CHANNEL_COUNT);
     let sample_manager = SampleManager::new();
-    println!("sample manager: {:?}", sample_manager);
 
     ctrlc::set_handler(move || {
         grid_sender.send(grid::GridMessage::Clear).unwrap();
@@ -43,12 +42,15 @@ fn main() -> Result<(), Error> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    // for (channel_index, _) in SAMPLE_FILES.iter().enumerate().take(CHANNEL_COUNT) {
-    //     audio_graph.load_and_play_for_channel(channel_index, SAMPLE_FILES[channel_index]);
-    // }
+    for channel_index in 0..CHANNEL_COUNT {
+        let sample_file = sample_manager
+            .get_path_for_sample(channel_index, 0)
+            .expect("Found default file in sample directory for channel");
+        audio_graph.load_and_play_for_channel(channel_index, &sample_file);
+    }
 
     for control_message in control_receiver {
-        message::process_message(control_message, &mut audio_graph)?;
+        message::process_message(control_message, &mut audio_graph, &sample_manager)?;
     }
 
     Ok(())
