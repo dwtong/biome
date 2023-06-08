@@ -27,15 +27,15 @@ enum Error {
 }
 
 fn main() -> Result<(), Error> {
-    let (control_sender, control_receiver) = channel::<ControlMessage>();
-    let _midi = Midi::start(control_sender.clone())?;
-    let (grid, grid_sender) = Grid::connect()?;
-    grid.start(control_sender);
+    let (control_tx, control_rx) = channel::<ControlMessage>();
+    let _midi = Midi::start(control_tx.clone())?;
+    let (grid, grid_tx) = Grid::connect()?;
+    grid.start(control_tx);
     let mut audio_graph = AudioGraph::new(CHANNEL_COUNT);
     let sample_manager = SampleManager::new();
 
     ctrlc::set_handler(move || {
-        grid_sender.send(grid::GridMessage::Clear).unwrap();
+        grid_tx.send(grid::GridMessage::Clear).unwrap();
         // wait for grid to clear
         std::thread::sleep(Duration::from_millis(100));
         process::exit(130);
@@ -49,7 +49,7 @@ fn main() -> Result<(), Error> {
         audio_graph.load_and_play_for_channel(channel_index, &sample_file);
     }
 
-    for control_message in control_receiver {
+    for control_message in control_rx {
         message::process_message(control_message, &mut audio_graph, &sample_manager)?;
     }
 

@@ -24,7 +24,7 @@ pub enum GridMessage {
 }
 
 pub struct Grid {
-    receiver: Receiver<GridMessage>,
+    rx: Receiver<GridMessage>,
     device: Monome,
     selected_sample_indexes: [usize; CHANNEL_COUNT],
     selected_channel_index: usize,
@@ -39,24 +39,24 @@ impl Grid {
             .ok_or(Error::DeviceNotFound)?;
         let device = Monome::from_device(&device, "/prefix").map_err(Error::FromDevice)?;
         let selected_sample_indexes = [0; CHANNEL_COUNT];
-        let (sender, receiver) = channel::<GridMessage>();
+        let (tx, rx) = channel::<GridMessage>();
 
         Ok((
             Grid {
-                receiver,
+                rx,
                 device,
                 selected_sample_indexes,
                 selected_channel_index: 0,
             },
-            sender,
+            tx,
         ))
     }
 
-    pub fn start(mut self, sender: Sender<ControlMessage>) {
+    pub fn start(mut self, tx: Sender<ControlMessage>) {
         self.redraw();
 
         thread::spawn(move || loop {
-            if let Ok(message) = self.receiver.try_recv() {
+            if let Ok(message) = self.rx.try_recv() {
                 match message {
                     GridMessage::Clear => self.clear(),
                 }
@@ -69,9 +69,7 @@ impl Grid {
             }) = self.device.poll()
             {
                 if let Some(control_message) = self.match_action((x as usize, y as usize)) {
-                    sender
-                        .send(control_message)
-                        .expect("Grid control message sent");
+                    tx.send(control_message).expect("Grid control message sent");
                 }
                 self.redraw();
             }
