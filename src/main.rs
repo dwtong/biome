@@ -37,7 +37,7 @@ fn main() -> Result<(), Error> {
     let (grid, grid_tx) = Grid::connect()?;
     grid.start(control_tx);
     let mut audio_graph = AudioGraph::new(CHANNEL_COUNT);
-    let sample_manager = SampleManager::new();
+    let sample_manager = SampleManager::new(&settings);
 
     ctrlc::set_handler(move || {
         grid_tx.send(grid::GridMessage::Clear).unwrap();

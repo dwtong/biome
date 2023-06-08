@@ -2,14 +2,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::{io, path::PathBuf};
 
-use crate::CHANNEL_COUNT;
-
-const SAMPLE_DIRS: [&str; CHANNEL_COUNT] = [
-    "/Users/dan/Sync/audio/collections/field/rain/glass/",
-    "/Users/dan/Sync/audio/collections/field/wind/general/",
-    "/Users/dan/Sync/audio/collections/field/wood/misc/",
-    "/Users/dan/Sync/audio/collections/field/water/bubbles/",
-];
+use crate::settings::Settings;
 
 #[derive(Debug)]
 pub struct SampleDir {
@@ -37,12 +30,16 @@ impl SampleDir {
 
 #[derive(Debug)]
 pub struct SampleManager {
-    dirs: [SampleDir; CHANNEL_COUNT],
+    dirs: Vec<SampleDir>,
 }
 
 impl SampleManager {
-    pub fn new() -> Self {
-        let dirs = SAMPLE_DIRS.map(SampleDir::from_path);
+    pub fn new(settings: &Settings) -> Self {
+        let dirs = settings
+            .sample_dirs()
+            .iter()
+            .map(|path| SampleDir::from_path(path))
+            .collect();
         Self { dirs }
     }
 
