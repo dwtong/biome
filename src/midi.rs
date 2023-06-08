@@ -1,8 +1,10 @@
 use midi_control::{Channel, ControlEvent, MidiMessage, MidiMessageSend};
-use midir::{self, ConnectError, InitError, MidiInput, MidiInputConnection, MidiOutput};
+use midir::{
+    self, ConnectError, InitError, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection,
+};
 use std::{eprintln, sync::mpsc::Sender};
 
-use crate::message::ControlMessage;
+use crate::{message::ControlMessage, settings::Settings};
 
 // https://github.com/mmckegg/rust-loop-drop/blob/master/src/midi_connection.rs
 
@@ -33,6 +35,7 @@ pub enum Error {
 
 pub struct Midi {
     _input: MidiInputConnection<Sender<ControlMessage>>,
+    output: MidiOutputConnection,
 }
 
 impl Midi {
@@ -45,15 +48,9 @@ impl Midi {
         println!("midi in: {:?}", midi_input.port_name(&in_port));
         println!("midi out: {:?}", midi_output.port_name(&out_port));
 
-        let mut connect_out = midi_output
+        let connect_output = midi_output
             .connect(&out_port, DEVICE)
             .map_err(Error::ConnectOutput)?;
-
-        // zero out all midi values on faderfox
-        for index in 0..64 {
-            let msg = midi_control::control_change(MIDI_CHANNEL, index, 0);
-            connect_out.send_message(msg).unwrap();
-        }
 
         let connect_input = midi_input
             .connect(
@@ -77,7 +74,15 @@ impl Midi {
 
         Ok(Self {
             _input: connect_input,
+            output: connect_output,
         })
+    }
+
+    pub fn init_values(&mut self, settings: &Settings) {
+        for (cc_id, value) in settings.midi_initial_values() {
+            let msg = midi_control::control_change(MIDI_CHANNEL, cc_id, value);
+            self.output.send_message(msg).unwrap();
+        }
     }
 }
 

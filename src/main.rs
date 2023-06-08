@@ -33,11 +33,13 @@ enum Error {
 fn main() -> Result<(), Error> {
     let settings = Settings::new()?;
     let (control_tx, control_rx) = channel::<ControlMessage>();
-    let _midi = Midi::start(control_tx.clone())?;
     let (grid, grid_tx) = Grid::connect()?;
-    grid.start(control_tx);
-    let mut audio_graph = AudioGraph::new(CHANNEL_COUNT);
     let sample_manager = SampleManager::new(&settings);
+    let mut midi = Midi::start(control_tx.clone())?;
+    let mut audio_graph = AudioGraph::new(CHANNEL_COUNT);
+
+    midi.init_values(&settings);
+    grid.start(control_tx);
 
     ctrlc::set_handler(move || {
         grid_tx.send(grid::GridMessage::Clear).unwrap();

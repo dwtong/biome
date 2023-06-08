@@ -8,7 +8,7 @@ pub struct Settings {
 #[derive(Debug, serde::Deserialize)]
 pub struct ChannelSettings {
     samples: SampleSettings,
-    midi: MidiSettings,
+    midi: Vec<MidiSettings>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -18,13 +18,7 @@ pub struct SampleSettings {
 
 #[derive(Debug, serde::Deserialize)]
 pub struct MidiSettings {
-    volume: MidiSetting,
-    filter_freq: MidiSetting,
-    filter_q: MidiSetting,
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct MidiSetting {
+    param: String,
     cc_id: u8,
     initial_value: u8,
 }
@@ -51,5 +45,15 @@ impl Settings {
             .iter()
             .map(|ch| ch.samples.dir.as_str())
             .collect()
+    }
+
+    pub fn midi_initial_values(&self) -> Vec<(u8, u8)> {
+        let mut values = Vec::new();
+        for channel in &self.channels {
+            for param in &channel.midi {
+                values.push((param.cc_id, param.initial_value));
+            }
+        }
+        values
     }
 }
