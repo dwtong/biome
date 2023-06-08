@@ -1,5 +1,5 @@
-use midi_control::{Channel, ControlEvent, MidiMessage};
-use midir::{self, ConnectError, InitError, MidiInput, MidiInputConnection};
+use midi_control::{Channel, ControlEvent, MidiMessage, MidiMessageSend};
+use midir::{self, ConnectError, InitError, MidiInput, MidiInputConnection, MidiOutput};
 use std::{eprintln, sync::mpsc::Sender};
 
 use crate::message::ControlMessage;
@@ -16,9 +16,13 @@ const MIDI_CHANNEL: Channel = Channel::Ch1;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("failed to find midi input device")]
-    DeviceNotFound,
+    InputDeviceNotFound,
+    #[error("failed to find midi output device")]
+    OutputDeviceNotFound,
     #[error("failed to connect to midi input device")]
     ConnectInput(#[from] ConnectError<MidiInput>),
+    #[error("failed to connect to midi output device")]
+    ConnectOutput(#[from] ConnectError<MidiOutput>),
     #[error("failed to initialise midi input device")]
     DeviceInit(#[from] InitError),
     #[error("midi message is on incorrect midi channel")]
@@ -33,14 +37,27 @@ pub struct Midi {
 
 impl Midi {
     pub fn start(tx: Sender<ControlMessage>) -> Result<Self, Error> {
-        let midi_input = midir::MidiInput::new(CLIENT_NAME)?;
-        let device_port = find_port(&midi_input).ok_or(Error::DeviceNotFound)?;
+        let midi_output = MidiOutput::new(CLIENT_NAME)?;
+        let midi_input = MidiInput::new(CLIENT_NAME)?;
+        let in_port = find_port(&midi_input).ok_or(Error::InputDeviceNotFound)?;
+        let out_port = find_port(&midi_output).ok_or(Error::OutputDeviceNotFound)?;
 
-        println!("Port: {:?}", midi_input.port_name(&device_port));
+        println!("midi in: {:?}", midi_input.port_name(&in_port));
+        println!("midi out: {:?}", midi_output.port_name(&out_port));
+
+        let mut connect_out = midi_output
+            .connect(&out_port, DEVICE)
+            .map_err(Error::ConnectOutput)?;
+
+        // zero out all midi values on faderfox
+        for index in 0..64 {
+            let msg = midi_control::control_change(MIDI_CHANNEL, index, 0);
+            connect_out.send_message(msg).unwrap();
+        }
 
         let connect_input = midi_input
             .connect(
-                &device_port,
+                &in_port,
                 DEVICE,
                 move |timestamp, data, tx| {
                     let midi_msg = MidiMessage::from(data);
