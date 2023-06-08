@@ -1,0 +1,53 @@
+channels:
+  - samples:
+      dir: "/Users/dan/Sync/audio/collections/field/rain/glass/"
+    midi:
+      volume:
+        cc_id: 10
+        initial_value: 0
+      filter_freq:
+        cc_id: 11
+        initial_value: 0
+      filter_q:
+        cc_id: 12
+        initial_value: 0
+
+  - samples:
+      dir: "/Users/dan/Sync/audio/collections/field/wind/general/"
+    midi:
+      volume:
+        cc_id: 20
+        initial_value: 0
+      filter_freq:
+        cc_id: 21
+        initial_value: 0
+      filter_q:
+        cc_id: 22
+        initial_value: 0
+
+  - samples:
+      dir: "/Users/dan/Sync/audio/collections/field/wood/misc/"
+    midi:
+      volume:
+        cc_id: 30
+        initial_value: 0
+      filter_freq:
+        cc_id: 31
+        initial_value: 0
+      filter_q:
+        cc_id: 32
+        initial_value: 0
+
+  - samples:
+      dir: "/Users/dan/Sync/audio/collections/field/water/bubbles/"
+    midi:
+      volume:
+        cc_id: 40
+        initial_value: 0
+      filter_freq:
+        cc_id: 41
+        initial_value: 0
+      filter_q:
+        cc_id: 42
+        initial_value: 0
+

@@ -2,6 +2,7 @@ use grid::Grid;
 use message::ControlMessage;
 use midi::Midi;
 use sample_manager::SampleManager;
+use settings::Settings;
 use std::{process, sync::mpsc::channel, time::Duration};
 
 mod audio_graph;
@@ -9,6 +10,7 @@ mod grid;
 mod message;
 mod midi;
 mod sample_manager;
+mod settings;
 
 use crate::audio_graph::AudioGraph;
 
@@ -24,9 +26,12 @@ enum Error {
     ControlMessage(#[from] message::Error),
     #[error("failed to connect midi")]
     Midi(#[from] midi::Error),
+    #[error("failed to parse settings")]
+    Settings(#[from] settings::Error),
 }
 
 fn main() -> Result<(), Error> {
+    let settings = Settings::new()?;
     let (control_tx, control_rx) = channel::<ControlMessage>();
     let _midi = Midi::start(control_tx.clone())?;
     let (grid, grid_tx) = Grid::connect()?;
