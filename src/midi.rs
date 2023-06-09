@@ -1,6 +1,7 @@
 use midi_control::{Channel, ControlEvent, MidiMessage, MidiMessageSend};
 use midir::{
-    self, ConnectError, InitError, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection,
+    self, ConnectError, InitError, MidiInput, MidiInputConnection, MidiOutput,
+    MidiOutputConnection, SendError,
 };
 use std::{eprintln, sync::mpsc::Sender};
 
@@ -27,6 +28,8 @@ pub enum Error {
     ConnectOutput(#[from] ConnectError<MidiOutput>),
     #[error("failed to initialise midi input device")]
     DeviceInit(#[from] InitError),
+    #[error("failed to echo midi value to output device")]
+    EchoValue(#[from] SendError),
     #[error("midi message is on incorrect midi channel")]
     IncorrectMidiChannel,
     #[error("midi value is not assigned to a control type")]
@@ -78,11 +81,12 @@ impl Midi {
         })
     }
 
-    pub fn init_values(&mut self, settings: &Settings) {
+    pub fn init_values(&mut self, settings: &Settings) -> Result<(), Error> {
         for (cc_id, value) in settings.midi_initial_values() {
             let msg = midi_control::control_change(MIDI_CHANNEL, cc_id, value);
-            self.output.send_message(msg).unwrap();
+            self.output.send_message(msg).map_err(Error::EchoValue)?;
         }
+        Ok(())
     }
 }
 

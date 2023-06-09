@@ -38,7 +38,7 @@ fn main() -> Result<(), Error> {
     let mut midi = Midi::start(control_tx.clone())?;
     let mut audio_graph = AudioGraph::new(&settings);
 
-    midi.init_values(&settings);
+    midi.init_values(&settings)?;
     grid.start(control_tx);
 
     ctrlc::set_handler(move || {
