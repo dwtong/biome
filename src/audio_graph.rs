@@ -5,6 +5,8 @@ use web_audio_api::node::{
     AudioBufferSourceNode, AudioNode, AudioScheduledSourceNode, BiquadFilterNode, GainNode,
 };
 
+use crate::settings::Settings;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("failed to open file")]
@@ -81,14 +83,14 @@ pub struct AudioGraph {
 }
 
 impl AudioGraph {
-    pub fn new(num_channels: usize) -> Self {
+    pub fn new(settings: &Settings) -> Self {
         let context = AudioContext::default();
 
         let volume = context.create_gain();
         volume.gain().set_value(1.0);
         volume.connect(&context.destination());
 
-        let channels: Vec<AudioGraphChannel> = (0..num_channels)
+        let channels: Vec<AudioGraphChannel> = (0..settings.channel_count())
             .map(|_| AudioGraphChannel::new(&context, &volume))
             .collect();
 

@@ -1,4 +1,4 @@
-use crate::{message::ControlMessage, CHANNEL_COUNT};
+use crate::{message::ControlMessage, settings::Settings};
 use monome::{KeyDirection, Monome, MonomeDeviceType, MonomeEvent};
 use std::{
     println,
@@ -26,19 +26,19 @@ pub enum GridMessage {
 pub struct Grid {
     rx: Receiver<GridMessage>,
     device: Monome,
-    selected_sample_indexes: [usize; CHANNEL_COUNT],
+    selected_sample_indexes: Vec<usize>,
     selected_channel_index: usize,
 }
 
 impl Grid {
-    pub fn connect() -> Result<(Self, Sender<GridMessage>), Error> {
+    pub fn connect(settings: &Settings) -> Result<(Self, Sender<GridMessage>), Error> {
         let device = Monome::enumerate_devices()
             .expect("Monome setup successfully")
             .into_iter()
             .find(|d| d.device_type() == MonomeDeviceType::Grid)
             .ok_or(Error::DeviceNotFound)?;
         let device = Monome::from_device(&device, "/prefix").map_err(Error::FromDevice)?;
-        let selected_sample_indexes = [0; CHANNEL_COUNT];
+        let selected_sample_indexes = vec![0; settings.channel_count()];
         let (tx, rx) = channel::<GridMessage>();
 
         Ok((
@@ -98,7 +98,7 @@ impl Grid {
 
     fn map_channel_strip(&mut self) -> [u8; 8] {
         let mut grid_mask = [0; 8];
-        (0..CHANNEL_COUNT).for_each(|index| {
+        (0..self.selected_sample_indexes.len()).for_each(|index| {
             if self.selected_channel_index == index {
                 grid_mask[index] = 10;
             } else {
@@ -140,7 +140,7 @@ impl Grid {
 
     pub fn match_action(&mut self, coords: (usize, usize)) -> Option<ControlMessage> {
         match coords {
-            (x, 7) if x < CHANNEL_COUNT => {
+            (x, 7) if x < self.selected_sample_indexes.len() => {
                 self.selected_channel_index = x;
                 None
             }

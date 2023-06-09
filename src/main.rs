@@ -14,7 +14,7 @@ mod settings;
 
 use crate::audio_graph::AudioGraph;
 
-pub const CHANNEL_COUNT: usize = 4;
+pub const MAX_CHANNEL_COUNT: usize = 4;
 
 #[derive(Debug, thiserror::Error)]
 enum Error {
@@ -33,10 +33,10 @@ enum Error {
 fn main() -> Result<(), Error> {
     let settings = Settings::new()?;
     let (control_tx, control_rx) = channel::<ControlMessage>();
-    let (grid, grid_tx) = Grid::connect()?;
+    let (grid, grid_tx) = Grid::connect(&settings)?;
     let sample_manager = SampleManager::new(&settings);
     let mut midi = Midi::start(control_tx.clone())?;
-    let mut audio_graph = AudioGraph::new(CHANNEL_COUNT);
+    let mut audio_graph = AudioGraph::new(&settings);
 
     midi.init_values(&settings);
     grid.start(control_tx);
@@ -49,7 +49,7 @@ fn main() -> Result<(), Error> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    for channel_index in 0..CHANNEL_COUNT {
+    for channel_index in 0..settings.channel_count() {
         let sample_file = sample_manager
             .get_path_for_sample(channel_index, 0)
             .expect("Found default file in sample directory for channel");

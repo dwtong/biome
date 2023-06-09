@@ -1,10 +1,8 @@
-use std::{
-    collections::{HashMap, HashSet},
-    hash::Hash,
-    ops::Not,
-};
+use std::{collections::HashSet, hash::Hash, ops::Not};
 
 use config::Config;
+
+use crate::MAX_CHANNEL_COUNT;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct Settings {
@@ -56,6 +54,10 @@ impl Settings {
             .collect()
     }
 
+    pub fn channel_count(&self) -> usize {
+        self.channels.len()
+    }
+
     pub fn midi_settings(&self) -> Vec<&MidiSettings> {
         self.channels
             .iter()
@@ -79,6 +81,10 @@ impl Settings {
 
         if has_dups(cc_ids) {
             return Err(Error::InvalidSettings("duplicate cc_ids".into()));
+        }
+
+        if self.channel_count() > MAX_CHANNEL_COUNT {
+            return Err(Error::InvalidSettings("too many channels".into()));
         }
 
         Ok(self)
