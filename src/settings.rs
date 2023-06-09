@@ -1,3 +1,9 @@
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+    ops::Not,
+};
+
 use config::Config;
 
 #[derive(Debug, serde::Deserialize)]
@@ -27,6 +33,8 @@ pub struct MidiSettings {
 pub enum Error {
     #[error("failed to parse settings file")]
     ConfigFile(#[from] config::ConfigError),
+    #[error("invalid settings value {0}")]
+    InvalidSettings(String),
 }
 
 impl Settings {
@@ -37,23 +45,51 @@ impl Settings {
 
         settings
             .try_deserialize::<Settings>()
-            .map_err(Error::ConfigFile)
+            .map_err(Error::ConfigFile)?
+            .validate()
     }
 
     pub fn sample_dirs(&self) -> Vec<&str> {
         self.channels
             .iter()
-            .map(|ch| ch.samples.dir.as_str())
+            .map(|channel| channel.samples.dir.as_str())
+            .collect()
+    }
+
+    pub fn midi_settings(&self) -> Vec<&MidiSettings> {
+        self.channels
+            .iter()
+            .flat_map(|channel| channel.midi.iter())
             .collect()
     }
 
     pub fn midi_initial_values(&self) -> Vec<(u8, u8)> {
-        let mut values = Vec::new();
-        for channel in &self.channels {
-            for param in &channel.midi {
-                values.push((param.cc_id, param.initial_value));
-            }
-        }
-        values
+        self.midi_settings()
+            .iter()
+            .map(|param| (param.cc_id, param.initial_value))
+            .collect()
     }
+
+    pub fn validate(self) -> Result<Self, Error> {
+        let cc_ids = &self
+            .midi_settings()
+            .iter()
+            .map(|param| param.cc_id)
+            .collect::<Vec<u8>>();
+
+        if has_dups(cc_ids) {
+            return Err(Error::InvalidSettings("duplicate cc_ids".into()));
+        }
+
+        Ok(self)
+    }
+}
+
+fn has_dups<T>(iter: T) -> bool
+where
+    T: IntoIterator,
+    T::Item: Eq + Hash,
+{
+    let mut uniq = HashSet::new();
+    iter.into_iter().all(|x| uniq.insert(x)).not()
 }
