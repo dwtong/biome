@@ -1,9 +1,8 @@
 use midi_control::{Channel, ControlEvent, MidiMessage, MidiMessageSend};
 use midir::{
-    self, ConnectError, InitError, MidiInput, MidiInputConnection, MidiOutput,
-    MidiOutputConnection, SendError,
+    self, ConnectError, InitError, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection,
 };
-use std::{eprintln, sync::mpsc::Sender};
+use std::sync::mpsc;
 
 use crate::{message::ControlMessage, settings::Settings};
 
@@ -12,7 +11,7 @@ use crate::{message::ControlMessage, settings::Settings};
 /// String to look for when enumerating the MIDI devices
 // const DEVICE: &str = "Launch Control";
 const DEVICE: &str = "Faderfox EC4";
-const CLIENT_NAME: &str = "WAP";
+const CLIENT_NAME: &str = "biome";
 
 const MIDI_CHANNEL: Channel = Channel::Ch1;
 
@@ -29,20 +28,21 @@ pub enum Error {
     #[error("failed to initialise midi input device")]
     DeviceInit(#[from] InitError),
     #[error("failed to echo midi value to output device")]
-    EchoValue(#[from] SendError),
-    #[error("midi message is on incorrect midi channel")]
-    IncorrectMidiChannel,
+    EchoValue(#[from] midir::SendError),
     #[error("midi value is not assigned to a control type")]
     MissingControlType,
+    #[error("failed to transmit control message")]
+    TransmitControlMessage(#[from] mpsc::SendError<ControlMessage>),
 }
 
 pub struct Midi {
-    _input: MidiInputConnection<Sender<ControlMessage>>,
+    _input: MidiInputConnection<mpsc::Sender<ControlMessage>>,
     output: MidiOutputConnection,
+    tx: mpsc::Sender<ControlMessage>,
 }
 
 impl Midi {
-    pub fn start(tx: Sender<ControlMessage>) -> Result<Self, Error> {
+    pub fn start(tx: mpsc::Sender<ControlMessage>) -> Result<Self, Error> {
         let midi_output = MidiOutput::new(CLIENT_NAME)?;
         let midi_input = MidiInput::new(CLIENT_NAME)?;
         let in_port = find_port(&midi_input).ok_or(Error::InputDeviceNotFound)?;
@@ -62,29 +62,47 @@ impl Midi {
                 move |timestamp, data, tx| {
                     let midi_msg = MidiMessage::from(data);
                     println!("{}: received {:?} => {:?}", timestamp, data, tx);
-                    if let MidiMessage::ControlChange(channel, event) = midi_msg {
-                        match process_control_change(channel, event) {
-                            Ok(ctrl_msg) => tx
-                                .send(ctrl_msg)
-                                .expect("message transmitted on mpsc channel"),
-                            Err(error) => eprintln!("Couldn't process control change: {}", error),
+                    match midi_msg {
+                        MidiMessage::ControlChange(MIDI_CHANNEL, event) => {
+                            parse_control_event(event)
+                                .and_then(|ctrl_msg| {
+                                    tx.send(ctrl_msg).map_err(Error::TransmitControlMessage)
+                                })
+                                .expect("message transmitted on mpsc channel");
+                        }
+                        MidiMessage::ControlChange(channel, event) => {
+                            eprintln!("couldn't process control change {:?} {:?}", channel, event);
+                        }
+                        message => {
+                            eprintln!("unsupported midi message {:?}", message);
                         }
                     }
                 },
-                tx,
+                tx.clone(),
             )
             .map_err(Error::ConnectInput)?;
 
         Ok(Self {
             _input: connect_input,
             output: connect_output,
+            tx,
         })
     }
 
     pub fn init_values(&mut self, settings: &Settings) -> Result<(), Error> {
-        for (cc_id, value) in settings.midi_initial_values() {
-            let msg = midi_control::control_change(MIDI_CHANNEL, cc_id, value);
+        for (control, value) in settings.midi_initial_values() {
+            let msg = midi_control::control_change(MIDI_CHANNEL, control, value);
+            let event = ControlEvent { control, value };
+
+            // echo midi values to midi device
             self.output.send_message(msg).map_err(Error::EchoValue)?;
+
+            // transmit initial values to audiograph
+            parse_control_event(event).and_then(|ctrl_msg| {
+                self.tx
+                    .send(ctrl_msg)
+                    .map_err(Error::TransmitControlMessage)
+            })?;
         }
         Ok(())
     }
@@ -106,15 +124,8 @@ where
     device_port
 }
 
-fn process_control_change(
-    midi_channel: Channel,
-    event: ControlEvent,
-) -> Result<ControlMessage, Error> {
-    println!("ControlChange: {:?}, event: {:?}", midi_channel, event);
-
-    if midi_channel != MIDI_CHANNEL {
-        return Err(Error::IncorrectMidiChannel);
-    }
+fn parse_control_event(event: ControlEvent) -> Result<ControlMessage, Error> {
+    println!("ControlChange event: {:?}", event);
 
     let (channel, control_type) = parse_control_value(event.control);
 

@@ -24,7 +24,7 @@ pub struct AudioGraphChannel {
 impl AudioGraphChannel {
     fn new(context: &AudioContext, destination: &GainNode) -> Self {
         let volume = context.create_gain();
-        volume.gain().set_value(0.5);
+        volume.gain().set_value(0.0);
         volume.connect(destination);
 
         let filter = context.create_biquad_filter();
@@ -87,7 +87,6 @@ impl AudioGraph {
         let context = AudioContext::default();
 
         let volume = context.create_gain();
-        volume.gain().set_value(1.0);
         volume.connect(&context.destination());
 
         let channels: Vec<AudioGraphChannel> = (0..settings.channel_count())
