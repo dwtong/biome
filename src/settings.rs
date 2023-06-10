@@ -4,26 +4,22 @@ use config::Config;
 
 use crate::MAX_CHANNEL_COUNT;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct Settings {
     channels: Vec<ChannelSettings>,
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct ChannelSettings {
-    samples: SampleSettings,
     midi: Vec<MidiSettings>,
 }
 
-#[derive(Debug, serde::Deserialize)]
-pub struct SampleSettings {
-    dir: String,
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct ChannelSettings {
+    sample_dir: String,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct MidiSettings {
-    param: String,
+    param: ControlParam,
     cc_id: u8,
+    channel: u8,
     initial_value: u8,
 }
 
@@ -33,6 +29,14 @@ pub enum Error {
     ConfigFile(#[from] config::ConfigError),
     #[error("invalid settings value {0}")]
     InvalidSettings(String),
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ControlParam {
+    FilterFrequency,
+    FilterQ,
+    Volume,
 }
 
 impl Settings {
@@ -50,7 +54,7 @@ impl Settings {
     pub fn sample_dirs(&self) -> Vec<&str> {
         self.channels
             .iter()
-            .map(|channel| channel.samples.dir.as_str())
+            .map(|channel| channel.sample_dir.as_str())
             .collect()
     }
 
@@ -59,10 +63,7 @@ impl Settings {
     }
 
     pub fn midi_settings(&self) -> Vec<&MidiSettings> {
-        self.channels
-            .iter()
-            .flat_map(|channel| channel.midi.iter())
-            .collect()
+        self.midi.iter().collect()
     }
 
     pub fn midi_initial_values(&self) -> Vec<(u8, u8)> {
@@ -70,6 +71,11 @@ impl Settings {
             .iter()
             .map(|param| (param.cc_id, param.initial_value))
             .collect()
+    }
+
+    pub fn channel_and_param_from_midi_event(&self, cc_id: u8) -> Option<(usize, &ControlParam)> {
+        let setting = self.midi.iter().find(|setting| setting.cc_id == cc_id)?;
+        Some((setting.channel.into(), &setting.param))
     }
 
     pub fn validate(self) -> Result<Self, Error> {

@@ -1,53 +1,66 @@
 channels:
-  - samples:
-      dir: "/Users/dan/Sync/audio/collections/field/rubber/friction/"
-    midi:
-      - param: volume
-        cc_id: 10
-        initial_value: 64
-      - param: filter_freq
-        cc_id: 11
-        initial_value: 32
-      - param: filter_q
-        cc_id: 12
-        initial_value: 0
+  - sample_dir: "/Users/dan/Sync/audio/collections/field/rubber/friction/"
+  - sample_dir: "/Users/dan/Sync/audio/collections/field/wind/general/"
+  - sample_dir: "/Users/dan/Sync/audio/collections/field/wood/misc/"
+  - sample_dir: "/Users/dan/Sync/audio/collections/field/water/bubbles/"
 
-  - samples:
-      dir: "/Users/dan/Sync/audio/collections/field/wind/general/"
-    midi:
-      - param: volume
-        cc_id: 20
-        initial_value: 0
-      - param: filter_freq
-        cc_id: 21
-        initial_value: 32
-      - param: filter_q
-        cc_id: 22
-        initial_value: 0
+midi:
+  - param: volume
+    channel: 0
+    cc_id: 10
+    initial_value: 64
 
-  - samples:
-      dir: "/Users/dan/Sync/audio/collections/field/wood/misc/"
-    midi:
-      - param: volume
-        cc_id: 30
-        initial_value: 0
-      - param: filter_freq
-        cc_id: 31
-        initial_value: 32
-      - param: filter_q
-        cc_id: 32
-        initial_value: 0
+  - param: filter_frequency
+    channel: 0
+    cc_id: 11
+    initial_value: 32
 
-  - samples:
-      dir: "/Users/dan/Sync/audio/collections/field/water/bubbles/"
-    midi:
-      - param: volume
-        cc_id: 40
-        initial_value: 0
-      - param: filter_freq
-        cc_id: 41
-        initial_value: 32
-      - param: filter_q
-        cc_id: 42
-        initial_value: 0
+  - param: filter_q
+    channel: 0
+    cc_id: 12
+    initial_value: 0
 
+  - param: volume
+    channel: 1
+    cc_id: 20
+    initial_value: 0
+
+  - param: filter_frequency
+    channel: 1
+    cc_id: 21
+    initial_value: 32
+
+  - param: filter_q
+    channel: 1
+    cc_id: 22
+    initial_value: 0
+
+  - param: volume
+    channel: 2
+    cc_id: 30
+    initial_value: 0
+
+  - param: filter_frequency
+    channel: 2
+    cc_id: 31
+    initial_value: 32
+
+  - param: filter_q
+    channel: 2
+    cc_id: 32
+    initial_value: 0
+
+  - param: volume
+    channel: 3
+    cc_id: 40
+    initial_value: 0
+
+  - param: filter_frequency
+    channel: 3
+    cc_id: 41
+    initial_value: 32
+
+  - param: filter_q
+    channel: 3
+    cc_id: 42
+    initial_value: 0

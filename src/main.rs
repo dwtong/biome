@@ -35,7 +35,7 @@ fn main() -> Result<(), Error> {
     let (control_tx, control_rx) = channel::<ControlMessage>();
     let (grid, grid_tx) = Grid::connect(&settings)?;
     let sample_manager = SampleManager::new(&settings);
-    let mut midi = Midi::start(control_tx.clone())?;
+    let mut midi = Midi::start(control_tx.clone(), settings.clone())?;
     let mut audio_graph = AudioGraph::new(&settings);
 
     midi.init_values(&settings)?;

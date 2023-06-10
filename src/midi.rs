@@ -4,7 +4,10 @@ use midir::{
 };
 use std::sync::mpsc;
 
-use crate::{message::ControlMessage, settings::Settings};
+use crate::{
+    message::ControlMessage,
+    settings::{ControlParam, Settings},
+};
 
 // https://github.com/mmckegg/rust-loop-drop/blob/master/src/midi_connection.rs
 
@@ -36,13 +39,13 @@ pub enum Error {
 }
 
 pub struct Midi {
-    _input: MidiInputConnection<mpsc::Sender<ControlMessage>>,
+    _input: MidiInputConnection<(mpsc::Sender<ControlMessage>, Settings)>,
     output: MidiOutputConnection,
     tx: mpsc::Sender<ControlMessage>,
 }
 
 impl Midi {
-    pub fn start(tx: mpsc::Sender<ControlMessage>) -> Result<Self, Error> {
+    pub fn start(tx: mpsc::Sender<ControlMessage>, settings: Settings) -> Result<Self, Error> {
         let midi_output = MidiOutput::new(CLIENT_NAME)?;
         let midi_input = MidiInput::new(CLIENT_NAME)?;
         let in_port = find_port(&midi_input).ok_or(Error::InputDeviceNotFound)?;
@@ -59,26 +62,32 @@ impl Midi {
             .connect(
                 &in_port,
                 DEVICE,
-                move |timestamp, data, tx| {
+                move |timestamp, data, (tx, settings)| {
                     let midi_msg = MidiMessage::from(data);
                     println!("{}: received {:?} => {:?}", timestamp, data, tx);
                     match midi_msg {
-                        MidiMessage::ControlChange(MIDI_CHANNEL, event) => {
-                            parse_control_event(event)
-                                .and_then(|ctrl_msg| {
-                                    tx.send(ctrl_msg).map_err(Error::TransmitControlMessage)
-                                })
-                                .expect("message transmitted on mpsc channel");
-                        }
                         MidiMessage::ControlChange(channel, event) => {
-                            eprintln!("couldn't process control change {:?} {:?}", channel, event);
+                            if channel != MIDI_CHANNEL {
+                                eprintln!(
+                                    "ignored control message on incorrect midi channel {:?}",
+                                    channel
+                                );
+                            }
+                            match parse_control_event(event, settings) {
+                                Ok(ctrl_msg) => {
+                                    tx.send(ctrl_msg).expect("Transmitted control message");
+                                }
+                                Err(error) => {
+                                    eprintln!("couldn't process control message {:?}", error);
+                                }
+                            }
                         }
                         message => {
                             eprintln!("unsupported midi message {:?}", message);
                         }
                     }
                 },
-                tx.clone(),
+                (tx.clone(), settings),
             )
             .map_err(Error::ConnectInput)?;
 
@@ -98,7 +107,7 @@ impl Midi {
             self.output.send_message(msg).map_err(Error::EchoValue)?;
 
             // transmit initial values to audiograph
-            parse_control_event(event).and_then(|ctrl_msg| {
+            parse_control_event(event, settings).and_then(|ctrl_msg| {
                 self.tx
                     .send(ctrl_msg)
                     .map_err(Error::TransmitControlMessage)
@@ -124,33 +133,27 @@ where
     device_port
 }
 
-fn parse_control_event(event: ControlEvent) -> Result<ControlMessage, Error> {
+fn parse_control_event(event: ControlEvent, settings: &Settings) -> Result<ControlMessage, Error> {
     println!("ControlChange event: {:?}", event);
 
-    let (channel, control_type) = parse_control_value(event.control);
+    let (audio_channel, control_type) = settings
+        .channel_and_param_from_midi_event(event.control)
+        .ok_or(Error::MissingControlType)?;
 
     match control_type {
-        0 => Ok(ControlMessage::SetChannelVolume(
-            channel,
+        ControlParam::Volume => Ok(ControlMessage::SetChannelVolume(
+            audio_channel,
             midi_to_percent(event.value),
         )),
-        1 => Ok(ControlMessage::SetChannelFilterFrequency(
-            channel,
+        ControlParam::FilterFrequency => Ok(ControlMessage::SetChannelFilterFrequency(
+            audio_channel,
             midi_to_freq(event.value),
         )),
-        2 => Ok(ControlMessage::SetChannelFilterQ(
-            channel,
+        ControlParam::FilterQ => Ok(ControlMessage::SetChannelFilterQ(
+            audio_channel,
             midi_to_percent(event.value),
         )),
-        _ => Err(Error::MissingControlType),
     }
-}
-
-fn parse_control_value(control: u8) -> (usize, usize) {
-    let control = control as usize;
-    let control_type = control % 10;
-    let channel = control / 10 - 1;
-    (channel, control_type)
 }
 
 fn midi_to_percent(midi_value: u8) -> f32 {
