@@ -1,3 +1,6 @@
+midi_device: "Faderfox EC4"
+midi_channel: 1
+
 channels:
   - sample_dir: "/Users/dan/Sync/audio/collections/field/rubber/friction/"
   - sample_dir: "/Users/dan/Sync/audio/collections/field/wind/general/"

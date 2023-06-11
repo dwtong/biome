@@ -6,6 +6,8 @@ use crate::MAX_CHANNEL_COUNT;
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Settings {
+    midi_channel: u8,
+    midi_device: String,
     channels: Vec<ChannelSettings>,
     midi: Vec<MidiSettings>,
 }
@@ -56,6 +58,14 @@ impl Settings {
             .iter()
             .map(|channel| channel.sample_dir.as_str())
             .collect()
+    }
+
+    pub fn midi_channel(&self) -> midi_control::Channel {
+        self.midi_channel.into()
+    }
+
+    pub fn midi_device(&self) -> &str {
+        &self.midi_device
     }
 
     pub fn channel_count(&self) -> usize {

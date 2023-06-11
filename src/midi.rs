@@ -1,4 +1,4 @@
-use midi_control::{Channel, ControlEvent, MidiMessage, MidiMessageSend};
+use midi_control::{ControlEvent, MidiMessage, MidiMessageSend};
 use midir::{
     self, ConnectError, InitError, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection,
 };
@@ -12,11 +12,7 @@ use crate::{
 // https://github.com/mmckegg/rust-loop-drop/blob/master/src/midi_connection.rs
 
 /// String to look for when enumerating the MIDI devices
-// const DEVICE: &str = "Launch Control";
-const DEVICE: &str = "Faderfox EC4";
 const CLIENT_NAME: &str = "biome";
-
-const MIDI_CHANNEL: Channel = Channel::Ch1;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -48,26 +44,26 @@ impl Midi {
     pub fn start(tx: mpsc::Sender<ControlMessage>, settings: Settings) -> Result<Self, Error> {
         let midi_output = MidiOutput::new(CLIENT_NAME)?;
         let midi_input = MidiInput::new(CLIENT_NAME)?;
-        let in_port = find_port(&midi_input).ok_or(Error::InputDeviceNotFound)?;
-        let out_port = find_port(&midi_output).ok_or(Error::OutputDeviceNotFound)?;
+        let in_port = find_port(&midi_input, &settings).ok_or(Error::InputDeviceNotFound)?;
+        let out_port = find_port(&midi_output, &settings).ok_or(Error::OutputDeviceNotFound)?;
 
         println!("midi in: {:?}", midi_input.port_name(&in_port));
         println!("midi out: {:?}", midi_output.port_name(&out_port));
 
         let connect_output = midi_output
-            .connect(&out_port, DEVICE)
+            .connect(&out_port, settings.midi_device())
             .map_err(Error::ConnectOutput)?;
 
         let connect_input = midi_input
             .connect(
                 &in_port,
-                DEVICE,
+                settings.midi_device(),
                 move |timestamp, data, (tx, settings)| {
                     let midi_msg = MidiMessage::from(data);
                     println!("{}: received {:?} => {:?}", timestamp, data, tx);
                     match midi_msg {
                         MidiMessage::ControlChange(channel, event) => {
-                            if channel != MIDI_CHANNEL {
+                            if channel != settings.midi_channel() {
                                 eprintln!(
                                     "ignored control message on incorrect midi channel {:?}",
                                     channel
@@ -87,7 +83,7 @@ impl Midi {
                         }
                     }
                 },
-                (tx.clone(), settings),
+                (tx.clone(), settings.clone()),
             )
             .map_err(Error::ConnectInput)?;
 
@@ -100,7 +96,7 @@ impl Midi {
 
     pub fn init_values(&mut self, settings: &Settings) -> Result<(), Error> {
         for (control, value) in settings.midi_initial_values() {
-            let msg = midi_control::control_change(MIDI_CHANNEL, control, value);
+            let msg = midi_control::control_change(settings.midi_channel(), control, value);
             let event = ControlEvent { control, value };
 
             // echo midi values to midi device
@@ -117,14 +113,14 @@ impl Midi {
     }
 }
 
-fn find_port<T>(midi_io: &T) -> Option<T::Port>
+fn find_port<T>(midi_io: &T, settings: &Settings) -> Option<T::Port>
 where
     T: midir::MidiIO,
 {
     let mut device_port: Option<T::Port> = None;
     for port in midi_io.ports() {
         if let Ok(port_name) = midi_io.port_name(&port) {
-            if port_name.contains(DEVICE) {
+            if port_name.contains(settings.midi_device()) {
                 device_port = Some(port);
                 break;
             }
