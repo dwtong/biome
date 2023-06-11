@@ -56,6 +56,11 @@ impl AudioGraphChannel {
         self.volume.gain().set_value(value);
     }
 
+    pub fn set_rate(&self, value: f32) {
+        // self.source.playback_rate().set_value(value);
+        todo!()
+    }
+
     pub fn load(&mut self, context: &AudioContext, path: &PathBuf) -> Result<(), Error> {
         let file = File::open(path)?;
         let buffer = context.decode_audio_data_sync(file)?;

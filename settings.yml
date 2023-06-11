@@ -23,6 +23,11 @@ midi:
     cc_id: 12
     initial_value: 0
 
+  # - param: rate
+  #   channel: 0
+  #   cc_id: 13
+  #   initial_value: 127
+
   - param: volume
     channel: 1
     cc_id: 20
@@ -37,6 +42,11 @@ midi:
     channel: 1
     cc_id: 22
     initial_value: 0
+
+  # - param: rate
+  #   channel: 1
+  #   cc_id: 23
+  #   initial_value: 127
 
   - param: volume
     channel: 2
@@ -53,6 +63,11 @@ midi:
     cc_id: 32
     initial_value: 0
 
+  # - param: rate
+  #   channel: 2
+  #   cc_id: 33
+  #   initial_value: 127
+
   - param: volume
     channel: 3
     cc_id: 40
@@ -67,3 +82,9 @@ midi:
     channel: 3
     cc_id: 42
     initial_value: 0
+
+  # - param: rate
+  #   channel: 3
+  #   cc_id: 43
+  #   initial_value: 127
+

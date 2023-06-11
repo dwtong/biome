@@ -38,6 +38,7 @@ pub enum Error {
 pub enum ControlParam {
     FilterFrequency,
     FilterQ,
+    Rate,
     Volume,
 }
 
@@ -61,7 +62,8 @@ impl Settings {
     }
 
     pub fn midi_channel(&self) -> midi_control::Channel {
-        self.midi_channel.into()
+        let channel_index = self.midi_channel - 1;
+        channel_index.into()
     }
 
     pub fn midi_device(&self) -> &str {

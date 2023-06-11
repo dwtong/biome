@@ -137,15 +137,19 @@ fn parse_control_event(event: ControlEvent, settings: &Settings) -> Result<Contr
         .ok_or(Error::MissingControlType)?;
 
     match control_type {
-        ControlParam::Volume => Ok(ControlMessage::SetChannelVolume(
-            audio_channel,
-            midi_to_percent(event.value),
-        )),
         ControlParam::FilterFrequency => Ok(ControlMessage::SetChannelFilterFrequency(
             audio_channel,
             midi_to_freq(event.value),
         )),
         ControlParam::FilterQ => Ok(ControlMessage::SetChannelFilterQ(
+            audio_channel,
+            midi_to_percent(event.value),
+        )),
+        ControlParam::Rate => Ok(ControlMessage::SetChannelRate(
+            audio_channel,
+            midi_to_percent(event.value),
+        )),
+        ControlParam::Volume => Ok(ControlMessage::SetChannelVolume(
             audio_channel,
             midi_to_percent(event.value),
         )),
