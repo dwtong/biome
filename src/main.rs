@@ -20,8 +20,6 @@ pub const MAX_CHANNEL_COUNT: usize = 4;
 enum Error {
     #[error("failed to control audio graph")]
     AudioGraph(#[from] audio_graph::Error),
-    #[error("failed to connect grid")]
-    Grid(#[from] grid::Error),
     #[error("failed to process control message")]
     ControlMessage(#[from] message::Error),
     #[error("failed to connect midi")]
@@ -33,7 +31,7 @@ enum Error {
 fn main() -> Result<(), Error> {
     let settings = Settings::new()?;
     let (control_tx, control_rx) = channel::<ControlMessage>();
-    let (grid, grid_tx) = Grid::connect(&settings)?;
+    let (grid, grid_tx) = Grid::new(&settings);
     let sample_manager = SampleManager::new(&settings);
     let mut midi = Midi::start(control_tx.clone(), settings.clone())?;
     let mut audio_graph = AudioGraph::new(&settings);
