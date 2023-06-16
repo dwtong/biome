@@ -5,6 +5,7 @@ use web_audio_api::node::{
     AudioBufferSourceNode, AudioNode, AudioScheduledSourceNode, BiquadFilterNode, GainNode,
 };
 
+use crate::midi::Midi;
 use crate::settings::Settings;
 
 #[derive(Debug, thiserror::Error)]
@@ -83,14 +84,13 @@ impl AudioGraphChannel {
 
 pub struct AudioGraph {
     channels: Vec<AudioGraphChannel>,
-    _volume: GainNode,
+    volume: GainNode,
     context: AudioContext,
 }
 
 impl AudioGraph {
     pub fn new(settings: &Settings) -> Self {
         let context = AudioContext::default();
-
         let volume = context.create_gain();
         volume.connect(&context.destination());
 
@@ -101,8 +101,15 @@ impl AudioGraph {
         Self {
             context,
             channels,
-            _volume: volume,
+            volume,
         }
+    }
+
+    pub fn mute_all(&self) {
+        let now = self.context.current_time();
+        self.volume
+            .gain()
+            .linear_ramp_to_value_at_time(0., now + 0.2);
     }
 
     pub fn get_channel(&self, channel_index: usize) -> Option<&AudioGraphChannel> {

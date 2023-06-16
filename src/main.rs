@@ -36,13 +36,14 @@ fn main() -> Result<(), Error> {
     let mut midi = Midi::start(control_tx.clone(), settings.clone())?;
     let mut audio_graph = AudioGraph::new(&settings);
 
+    grid.start(control_tx.clone());
     midi.init_values(&settings)?;
-    grid.start(control_tx);
 
     ctrlc::set_handler(move || {
         grid_tx.send(grid::GridMessage::Clear).unwrap();
-        // wait for grid to clear
-        std::thread::sleep(Duration::from_millis(100));
+        control_tx.send(ControlMessage::MuteAll).unwrap();
+        // wait for grid to clear and audio graph to fade
+        std::thread::sleep(Duration::from_millis(250));
         process::exit(130);
     })
     .expect("Error setting Ctrl-C handler");

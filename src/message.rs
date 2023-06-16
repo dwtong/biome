@@ -12,6 +12,7 @@ pub enum Error {
 
 #[derive(Copy, Clone, Debug)]
 pub enum ControlMessage {
+    MuteAll,
     SetChannelFilterFrequency(AudioChannel, f32),
     SetChannelFilterQ(AudioChannel, f32),
     SetChannelRate(AudioChannel, f32),
@@ -27,6 +28,7 @@ pub fn process_message(
     println!("Message: {:?}", msg);
 
     match msg {
+        ControlMessage::MuteAll => audio_graph.mute_all(),
         ControlMessage::SetChannelFilterFrequency(channel_index, freq) => {
             let channel = audio_graph
                 .get_channel(channel_index)
