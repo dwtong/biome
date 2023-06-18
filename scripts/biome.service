@@ -1,0 +1,11 @@
+[Unit]
+Description=Biome
+After=local-fs.target
+
+[Service]
+Type=idle
+ExecStart=/home/pisound/biome
+EnvironmentFile=/home/pisound/.env
+
+[Install]
+WantedBy=local-fs.target

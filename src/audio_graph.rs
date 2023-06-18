@@ -5,7 +5,6 @@ use web_audio_api::node::{
     AudioBufferSourceNode, AudioNode, AudioScheduledSourceNode, BiquadFilterNode, GainNode,
 };
 
-use crate::midi::Midi;
 use crate::settings::Settings;
 
 #[derive(Debug, thiserror::Error)]

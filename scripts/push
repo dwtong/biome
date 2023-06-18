@@ -1,0 +1,10 @@
+#!/bin/bash -ex
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SSH_HOST=pisound
+
+$SCRIPT_DIR/build
+ssh $SSH_HOST "sudo systemctl stop biome"
+scp $SCRIPT_DIR/../target/armv7-unknown-linux-gnueabihf/release/biome $SSH_HOST:~/biome
+scp $SCRIPT_DIR/../settings.yml $SSH_HOST:~/settings.yml
+ssh $SSH_HOST "sudo systemctl start biome"

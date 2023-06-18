@@ -1,0 +1,4 @@
+#!/bin/bash -ex
+
+SSH_HOST=pisound
+ssh $SSH_HOST "sudo systemctl restart biome"

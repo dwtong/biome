@@ -2,10 +2,10 @@ midi_device: "Faderfox EC4"
 midi_channel: 1
 
 channels:
-  - sample_dir: "/Users/dan/Sync/audio/collections/field/rubber/friction/"
-  - sample_dir: "/Users/dan/Sync/audio/collections/field/wind/general/"
-  - sample_dir: "/Users/dan/Sync/audio/collections/field/wood/misc/"
-  - sample_dir: "/Users/dan/Sync/audio/collections/field/water/bubbles/"
+  - sample_dir: "/home/pisound/shared/samples/1/"
+  - sample_dir: "/home/pisound/shared/samples/2/"
+  - sample_dir: "/home/pisound/shared/samples/3/"
+  - sample_dir: "/home/pisound/shared/samples/4/"
 
 midi:
   - param: volume

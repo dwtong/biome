@@ -1,0 +1,19 @@
+#!/bin/bash -ex
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SSH_HOST=pisound
+
+$SCRIPT_DIR/build
+scp $SCRIPT_DIR/../target/armv7-unknown-linux-gnueabihf/release/biome $SSH_HOST:~/biome
+scp $SCRIPT_DIR/../settings.yml $SSH_HOST:~/settings.yml
+scp $SCRIPT_DIR/biome.service $SSH_HOST:~/biome.service
+scp $SCRIPT_DIR/.env $SSH_HOST:~/.env
+
+ssh $SSH_HOST <<EOF
+sudo mv ~/biome.service /lib/systemd/system/biome.service
+sudo chmod 644 /lib/systemd/system/biome.service
+sudo systemctl daemon-reload
+sudo systemctl enable biome.service
+echo "Rebooting."
+sudo reboot
+EOF

@@ -1,0 +1,11 @@
+#!/bin/bash -ex
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+if ! command -v cross &> /dev/null; then
+  cargo install cross
+fi
+
+
+docker build -t crossbuild:local $SCRIPT_DIR
+cross build --target=armv7-unknown-linux-gnueabihf --release

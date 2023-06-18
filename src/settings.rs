@@ -1,4 +1,7 @@
-use std::{collections::HashSet, hash::Hash, ops::Not};
+use std::collections::HashSet;
+use std::env;
+use std::hash::Hash;
+use std::ops::Not;
 
 use config::Config;
 
@@ -31,6 +34,8 @@ pub enum Error {
     ConfigFile(#[from] config::ConfigError),
     #[error("invalid settings value {0}")]
     InvalidSettings(String),
+    #[error("invalid environment variable {0}")]
+    EnvVar(#[from] env::VarError),
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -44,8 +49,10 @@ pub enum ControlParam {
 
 impl Settings {
     pub fn new() -> Result<Self, Error> {
+        let settings_file = env::var("SETTINGS_FILE")?;
+        println!("Loading settings from {}.", &settings_file);
         let settings = Config::builder()
-            .add_source(config::File::with_name("settings"))
+            .add_source(config::File::with_name(&settings_file))
             .build()?;
 
         settings
