@@ -1,8 +1,10 @@
-use std::ffi::OsStr;
 use std::fs;
 use std::{io, path::PathBuf};
 
 use crate::settings::Settings;
+
+const HIDDEN_FILE: &str = "._";
+const WAV_EXTENSION: &str = "wav";
 
 #[derive(Debug)]
 pub struct SampleDir {
@@ -17,12 +19,8 @@ impl SampleDir {
     fn entries(&self) -> Result<Vec<PathBuf>, io::Error> {
         let entries = fs::read_dir(&self.path)?
             .map(|dir| dir.map(|entry| entry.path()))
-            .collect::<Result<Vec<_>, io::Error>>()?;
-
-        let entries: Vec<PathBuf> = entries
-            .into_iter()
-            .filter(|entry| entry.extension() == Some(OsStr::new("wav")))
-            .collect();
+            .filter(is_valid_file)
+            .collect::<Result<Vec<PathBuf>, io::Error>>()?;
 
         Ok(entries)
     }
@@ -51,5 +49,15 @@ impl SampleManager {
         let entries = self.dirs.get(channel_index)?.entries().ok()?;
         let path = entries.get(sample_index)?;
         Some(path.clone())
+    }
+}
+
+fn is_valid_file(path: &Result<PathBuf, io::Error>) -> bool {
+    match path {
+        Ok(path) => {
+            let path = path.as_os_str().to_string_lossy();
+            path.contains(WAV_EXTENSION) && !path.contains(HIDDEN_FILE)
+        }
+        Err(_) => false,
     }
 }
