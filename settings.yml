@@ -11,7 +11,7 @@ midi:
   - param: volume
     channel: 0
     cc_id: 10
-    initial_value: 64
+    initial_value: 0
 
   - param: filter_frequency
     channel: 0
