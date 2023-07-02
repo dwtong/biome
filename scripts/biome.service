@@ -6,6 +6,8 @@ After=local-fs.target
 Type=idle
 ExecStart=/home/pisound/biome
 EnvironmentFile=/home/pisound/.env
+Restart=on-failure
+RestartSec=5s
 
 [Install]
 WantedBy=local-fs.target
