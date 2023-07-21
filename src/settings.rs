@@ -49,7 +49,7 @@ pub enum ControlParam {
 
 impl Settings {
     pub fn new() -> Result<Self, Error> {
-        let settings_file = env::var("SETTINGS_FILE")?;
+        let settings_file = env::var("SETTINGS_FILE").unwrap_or("settings.yml".into());
         println!("Loading settings from {}.", &settings_file);
         let settings = Config::builder()
             .add_source(config::File::with_name(&settings_file))

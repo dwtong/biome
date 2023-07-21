@@ -2,10 +2,14 @@ midi_device: "Faderfox EC4"
 midi_channel: 1
 
 channels:
-  - sample_dir: "/home/pisound/shared/samples/1/"
-  - sample_dir: "/home/pisound/shared/samples/2/"
-  - sample_dir: "/home/pisound/shared/samples/3/"
-  - sample_dir: "/home/pisound/shared/samples/4/"
+  # - sample_dir: "/home/pisound/shared/samples/1/"
+  # - sample_dir: "/home/pisound/shared/samples/2/"
+  # - sample_dir: "/home/pisound/shared/samples/3/"
+  # - sample_dir: "/home/pisound/shared/samples/4/"
+  - sample_dir: "./samples/"
+  - sample_dir: "./samples"
+  - sample_dir: "./samples"
+  - sample_dir: "./samples"
 
 midi:
   - param: volume
