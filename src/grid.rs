@@ -15,22 +15,6 @@ pub enum GridMessage {
     Clear,
 }
 
-trait GridDevice {
-    fn redraw(&mut self, left_mask: &[u8; 64], right_mask: &[u8; 64]);
-
-    fn clear(&mut self) {
-        let clear_mask = &[0; 64];
-        self.redraw(clear_mask, clear_mask);
-    }
-}
-
-impl GridDevice for Monome {
-    fn redraw(&mut self, left_mask: &[u8; 64], right_mask: &[u8; 64]) {
-        self.map(0, 0, left_mask);
-        self.map(8, 0, right_mask);
-    }
-}
-
 pub struct Grid {
     rx: Receiver<GridMessage>,
     device: Option<Monome>,
@@ -39,10 +23,6 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn device(&mut self) -> Option<&mut Monome> {
-        self.device.as_mut()
-    }
-
     pub fn new(settings: &Settings) -> (Self, Sender<GridMessage>) {
         let device = Monome::enumerate_devices()
             .expect("Monome setup successfully")
@@ -66,25 +46,29 @@ impl Grid {
         self.redraw();
 
         thread::spawn(move || loop {
-            let device = &mut self.device;
             let rx = &self.rx;
 
-            if let Some(device) = device {
-                if let Ok(GridMessage::Clear) = rx.try_recv() {
-                    device.clear();
-                }
-                if let Some(MonomeEvent::GridKey {
-                    x,
-                    y,
-                    direction: KeyDirection::Down,
-                }) = device.poll()
-                {
-                    self.match_action((x as usize, y as usize))
-                        .map(|msg| control_tx.send(msg));
-                    self.redraw();
-                }
+            if let Ok(GridMessage::Clear) = rx.try_recv() {
+                self.clear_device();
+            }
+            if let Some(MonomeEvent::GridKey {
+                x,
+                y,
+                direction: KeyDirection::Down,
+            }) = self.poll_device()
+            {
+                self.match_action((x as usize, y as usize))
+                    .map(|msg| control_tx.send(msg));
+                self.redraw();
             }
         });
+    }
+
+    pub fn poll_device(&mut self) -> Option<MonomeEvent> {
+        match &mut self.device {
+            Some(device) => device.poll(),
+            None => None,
+        }
     }
 
     pub fn redraw(&mut self) {
@@ -101,9 +85,18 @@ impl Grid {
             .enumerate()
             .for_each(|(index, value)| left_mask[index + channel_offset] = value);
 
-        if let Some(device) = self.device() {
-            device.redraw(&left_mask, &right_mask);
-        };
+        self.redraw_device(&left_mask, &right_mask);
+    }
+
+    fn redraw_device(&mut self, left_mask: &[u8; 64], right_mask: &[u8; 64]) {
+        if let Some(device) = &mut self.device {
+            device.map(0, 0, left_mask);
+            device.map(8, 0, right_mask);
+        }
+    }
+    fn clear_device(&mut self) {
+        let clear_mask = &[0; 64];
+        self.redraw_device(clear_mask, clear_mask);
     }
 
     fn map_channel_strip(&self) -> [u8; 8] {
